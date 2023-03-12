@@ -1,38 +1,170 @@
-.App {
-  text-align: center;
-}
-
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
-}
-
-.App-header {
-  background-color: #282c34;
-  min-height: 100vh;
+.app {
+  text-align: justify;
+  color: black;
   display: flex;
   flex-direction: column;
-  align-items: center;
+}
+
+.simWrapper {
   justify-content: center;
-  font-size: calc(10px + 2vmin);
-  color: white;
+  align-self: center;
+  display: flex;
+  flex-direction: row;
+  width: 1000px;
+  max-width: 90vw;
+  height: 600px;
+  max-height: 90vh;
 }
 
-.App-link {
-  color: #61dafb;
+.simWrapperLeft {
+  width: 30%;
 }
 
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+.simWrapperRight {
+  width: 70%;
 }
+
+.txtTransitionsWrapper {
+  border-style: solid;
+  border-width: 1px;
+  border-color: black;
+  box-sizing: border-box;
+  height: 60%;
+  text-align: center;
+  overflow: auto;
+}
+
+.transition {
+  justify-content: center;
+  height: 30;
+  display: flex;
+  flex-direction: row;
+  text-align: center;
+  border-style: solid;
+  border-width: 1px;
+  border-color: black;
+  box-sizing: border-box;
+}
+
+.add, .remove {
+  border-style: solid;
+  border-width: 1px;
+  border-color: black;
+  box-sizing: border-box;
+  background-color: transparent;
+  transition-duration: 0.2s;
+  width: 20px;
+  height: 20px;
+  text-align: center;
+  padding: 0%;
+}
+
+.txtStartSelect {
+  border-style: solid;
+  border-width: 1px;
+  border-color: black;
+  box-sizing: border-box;
+  background-color: transparent;
+  transition-duration: 0.2s;
+  width: 40%;
+}
+
+.txtAccept {
+  border-style: solid;
+  border-width: 1px;
+  border-color: black;
+  box-sizing: border-box;
+  height: 20%;
+}
+
+.simStart {
+  border-style: solid;
+  border-width: 1px;
+  border-color: black;
+  box-sizing: border-box;
+  transition-duration: 0.2s;
+  background-color: transparent;
+  width: 100%;
+  height: 10%;
+  font-size: inherit;
+}
+
+.simStart:hover {
+  background-color: rgb(0, 172, 172);
+}
+
+.guiSim {
+  border-style: solid;
+  border-width: 1px;
+  border-color: black;
+  box-sizing: border-box;
+  height: 80%;
+}
+
+.stackWrapper, .inputWrapper, .txtStartWrapper {
+  display: flex;
+  flex-direction: row;
+  height: 10%;
+}
+
+.stackLabel, .inputLabel {
+  border-style: solid;
+  border-width: 1px;
+  border-color: black;
+  box-sizing: border-box;
+  width: 30%;
+}
+
+.txtStartLabel {
+  border-style: solid;
+  border-width: 1px;
+  border-color: black;
+  box-sizing: border-box;
+  width: 60%;
+}
+
+.stackState {
+  border-style: solid;
+  border-width: 1px;
+  border-color: black;
+  box-sizing: border-box;
+  width: 70%;
+}
+
+.inputInput {
+  background-color: transparent;
+  border-style: solid;
+  border-width: 1px;
+  border-color: black;
+  box-sizing: border-box;
+  width: 70%;
+  transition-duration: 0.2s;
+}
+
+.boxInput {
+  background-color: transparent;
+  border-style: solid;
+  border-width: 1px;
+  border-color: black;
+  box-sizing: border-box;
+  width: 25px;
+  height: 25px;
+  transition-duration: 0.2s;
+}
+
+.inputInput::placeholder {
+  color: black;
+}
+
+.inputInput:hover, .txtStartSelect:hover, .add:hover, .boxInput:hover {
+  background-color: green;
+}
+
+.remove:hover {
+  background-color: red;
+}
+
+.inputInput:focus, .txtStartSelect:focus, .boxInput:focus {
+  outline: none;
+}
+
