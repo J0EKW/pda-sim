@@ -1,15 +1,16 @@
 {
   "files": {
-    "main.css": "/pda-sim/static/css/main.ada1e847.css",
-    "main.js": "/pda-sim/static/js/main.bfeac4a1.js",
+    "main.css": "/pda-sim/static/css/main.073c9b0a.css",
+    "main.js": "/pda-sim/static/js/main.fc717fa9.js",
     "static/js/787.49490451.chunk.js": "/pda-sim/static/js/787.49490451.chunk.js",
+    "static/media/logo.svg": "/pda-sim/static/media/logo.6ce24c58023cc2f8fd88fe9d219db6c6.svg",
     "index.html": "/pda-sim/index.html",
-    "main.ada1e847.css.map": "/pda-sim/static/css/main.ada1e847.css.map",
-    "main.bfeac4a1.js.map": "/pda-sim/static/js/main.bfeac4a1.js.map",
+    "main.073c9b0a.css.map": "/pda-sim/static/css/main.073c9b0a.css.map",
+    "main.fc717fa9.js.map": "/pda-sim/static/js/main.fc717fa9.js.map",
     "787.49490451.chunk.js.map": "/pda-sim/static/js/787.49490451.chunk.js.map"
   },
   "entrypoints": [
-    "static/css/main.ada1e847.css",
-    "static/js/main.bfeac4a1.js"
+    "static/css/main.073c9b0a.css",
+    "static/js/main.fc717fa9.js"
   ]
 }
