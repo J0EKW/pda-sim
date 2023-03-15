@@ -83,10 +83,6 @@ const App:any = () => {
       }
       setAccept(aCopy);
       setStates(sCopy);
-      console.log(accept);
-      console.log(aCopy);
-      console.log(states);
-      console.log(sCopy);
     }
 
     const addAccept = () => {
@@ -106,10 +102,6 @@ const App:any = () => {
       }
       setAccept(aCopy);
       setStates(sCopy);
-      console.log(accept);
-      console.log(aCopy);
-      console.log(states);
-      console.log(sCopy);
     }
 
     const removeAccept = (nameParam:string) => {
@@ -126,10 +118,6 @@ const App:any = () => {
       }
       setAccept(aCopy);
       setStates(sCopy);
-      console.log(accept);
-      console.log(aCopy);
-      console.log(states);
-      console.log(sCopy);
     }
 
     const updateStateName = (idParam:number, nameParam:string) => {
@@ -141,6 +129,7 @@ const App:any = () => {
     const addTransition = () => {
       if (states.length < 1) {
          addState('q0');
+         SetStartState('q0');
       }
       let defaultState:State = states[0];
       let newTransition:Transition = {
@@ -183,7 +172,6 @@ const App:any = () => {
       let index:number = transitions.indexOf(transitionParam);
       let tCopy = [...transitions];
       tCopy[index].cInput = cInputParam;
-      console.log(transitions[index]);
       setTransitions(tCopy);
     }
 
