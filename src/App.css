@@ -77,6 +77,21 @@
   height: 20%;
 }
 
+.txtAcceptSelect {
+  border-style: solid;
+  border-width: 1px;
+  border-color: black;
+  box-sizing: border-box;
+  background-color: transparent;
+  transition-duration: 0.2s;
+  width: 50px;
+  height: 25px;
+}
+
+.node {
+  cursor: move;
+}
+
 .simStart {
   border-style: solid;
   border-width: 1px;
@@ -156,7 +171,7 @@
   color: black;
 }
 
-.inputInput:hover, .txtStartSelect:hover, .add:hover, .boxInput:hover {
+.inputInput:hover, .txtStartSelect:hover, .txtAcceptSelect:hover, .add:hover, .boxInput:hover {
   background-color: green;
 }
 
@@ -164,7 +179,7 @@
   background-color: red;
 }
 
-.inputInput:focus, .txtStartSelect:focus, .boxInput:focus {
+.inputInput:focus, .txtStartSelect:focus, .txtAcceptSelect:focus, .boxInput:focus {
   outline: none;
 }
 
