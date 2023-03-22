@@ -5,6 +5,17 @@
   flex-direction: column;
 }
 
+#contextMenu {
+  position: absolute;
+  padding: 10px;
+  left: 0;
+  top: 0;
+  width: 100px;
+  height: 100px;
+  box-sizing: border-box;
+  background-color: aqua;
+}
+
 .simWrapper {
   justify-content: center;
   align-self: center;
