@@ -469,7 +469,9 @@ const App:any = () => {
       let stateId:number;
 
       [stateId, newAccepts] = addAccept(-1, newAccepts, newStates); //-1 means it will choose the next available state
-      newStates = setAcceptState(stateId, true, newStates);
+      if (stateId !== -1) {
+        newStates = setAcceptState(stateId, true, newStates);
+      }
 
       setAccept(newAccepts);
       setStates(newStates);
