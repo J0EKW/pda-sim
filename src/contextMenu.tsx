@@ -4,7 +4,7 @@ import './App.css';
 
 type Option = {
     label: string,
-    func: () => void
+    func: any
 }
 
 type contextMenuProps = {
@@ -18,7 +18,7 @@ export const ContextMenu = (props: contextMenuProps) => {
         <div id='contextMenu' style={{ left: props.left, top: props.top }}>
             {props.options.map((x, i) => {
                 return(
-                    <input key={i} type='submit' value={x.label} onClick={x.func} />
+                    <input className='contextMenuOption' key={i} type='submit' value={x.label} onClick={x.func} />
                 );
             })}
         </div>
