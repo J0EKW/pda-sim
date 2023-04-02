@@ -27,6 +27,9 @@ const App:any = () => {
     const [contextMenuPos, setContextMenuPos] = useState<ContextMenuPosType>({x: 0, y: 0});
     const [contextMenuOptions, setContextMenuOptions] = useState<OptionType[]>([]);
     const [stateRenameVisible, setStateRenameVisible] = useState<Boolean>(false);
+    const [selectedState, setSelectedState] = useState<number>(0);
+    const [stateRenameVal, setStateRenameVal] = useState<string>('');
+    
 
     const addState = (nameParam: string = '', statesParam:StateType[]):[newState:StateType, newStateId:number, states:StateType[]] => {
       if (states.filter(state => state.name == nameParam).length > 0) {
@@ -54,11 +57,13 @@ const App:any = () => {
       }
       let newTransitions = transitions.filter(transition => stateParamIds.find(s => (s === transition.cStateId) || (s === transition.nStateId)) === undefined);
       let removedTransitions = transitions.filter(transition => stateParamIds.find(s => (s === transition.cStateId) || (s === transition.nStateId)) !== undefined);
+      let newConnections:ConnectionType[] = [];
       removedTransitions.forEach(transition => {
-        removeConnection(transition.cStateId, transition.nStateId, transition.id, connections);
+        newConnections = removeConnection(transition.cStateId, transition.nStateId, transition.id, connections);
       });
       setStates(newStates);
       setTransitions(newTransitions);
+      setConnections(newConnections);
     }
 
     const setStartState = (idParam:number, valueParam:boolean, statesParam:StateType[]):StateType[] => {
@@ -300,11 +305,25 @@ const App:any = () => {
       });
       newOptions.push({
         label: 'rename',
-        func: () => console.log("hello World")
+        func: () => setupStateRename(stateParam.id)
       });
       setContextMenuPos({x: event.clientX, y: event.clientY});
       setContextMenuOptions(newOptions);
     }
+
+    const transitionContextMenu = (event:React.MouseEvent<SVGCircleElement|SVGTextElement, MouseEvent>, transitionParam:TransitionType) => {
+      event.preventDefault();
+      setContextMenuVisible(true);
+      setSelected(-1);
+      let newOptions:OptionType[] = [];
+      newOptions.push({
+        label: 'remove',
+        func: () => clientRemoveTransition(transitionParam)
+      });
+      setContextMenuPos({x: event.clientX, y: event.clientY});
+      setContextMenuOptions(newOptions);
+    }
+
 
     const clientRemoveTransition = (transitionParam:TransitionType):void => {
       let newTransitions:TransitionType[] = [...transitions];
@@ -477,6 +496,12 @@ const App:any = () => {
       setStates(newStates);
     }
 
+    const setupStateRename = (stateIdParam:number) => {
+      setSelectedState(stateIdParam);
+      setStateRenameVisible(true);
+    }
+      
+
     useEffect(() => {
       const handleClick = () => setContextMenuVisible(false);
       window.addEventListener('click', handleClick);
@@ -535,6 +560,13 @@ const App:any = () => {
             <input type='submit' className='simStart' value='start' onClick={() => run()}/>
           </div>
           <div className='simWrapperRight'>
+          {stateRenameVisible && 
+           <div className='renameStateWrapper'>
+             <div className='renameStateLabel'>Please Enter the new State name</div>
+             <input className='remove' type='submit' value='x' onClick={() => setStateRenameVisible(false)}/>
+             <input className='renameStateInput' type='text' maxLength={2} onChange={(e) => setStateRenameVal(e.currentTarget.value)}></input>
+             <input className='add' type='submit' value='🗸' onClick={() => {updateStateName(selectedState, stateRenameVal); setStateRenameVisible(false);}} />
+           </div>}
           <svg xmlns="http://www.w3.org/2000/svg" id="myCanvas" viewBox='0 0 100% 100%' className='guiSim' onMouseMove={(e) => drag(e)} onMouseUp={() => setSelected(-1)}>
             <defs>
               <marker 
@@ -567,8 +599,9 @@ const App:any = () => {
                       {x.transitionIds.map((y, i) => {
                         let transition = transitions.find(t => t.id == y);
                         if (transition !== undefined) {
+                          let t:TransitionType = transition;
                           return(
-                            <tspan x={cState.x} y={cState.y - 50 - (i * 20)} key={i}>{transition.cInput + " " + transition.cStack + "/" + transition.nStack}</tspan>
+                            <tspan x={cState.x} y={cState.y - 50 - (i * 20)} key={i} onContextMenu={e => transitionContextMenu(e, t)}>{transition.cInput + " " + transition.cStack + "/" + transition.nStack}</tspan>
                           );
                         }
                       })}
@@ -584,8 +617,9 @@ const App:any = () => {
                     {x.transitionIds.map((y, i) => {
                         let transition = transitions.find(t => t.id == y);
                         if (transition !== undefined) {
+                          let t:TransitionType = transition;
                           return(
-                            <tspan x={cState.x + ((nState.x - cState.x) / 2)} y={(cState.y + ((nState.y - cState.y) / 2)) + ((nState.y - cState.y) > 0 ? 1 : -1) * (20 + (i * 20))} key={i}>{transition.cInput + " " + transition.cStack + "/" + transition.nStack}</tspan>
+                            <tspan x={cState.x + ((nState.x - cState.x) / 2)} y={(cState.y + ((nState.y - cState.y) / 2)) + ((nState.y - cState.y) > 0 ? 1 : -1) * (20 + (i * 20))} key={i} onContextMenu={e => transitionContextMenu(e, t)}>{transition.cInput + " " + transition.cStack + "/" + transition.nStack}</tspan>
                           );
                         }
                       })}
@@ -600,8 +634,9 @@ const App:any = () => {
                     {x.transitionIds.map((y, i) => {
                         let transition = transitions.find(t => t.id == y);
                         if (transition !== undefined) {
+                          let t:TransitionType = transition;
                           return(
-                            <tspan x={cState.x + ((nState.x - cState.x) / 2)} y={(cState.y + ((nState.y - cState.y) / 2)) - (i * 20)} key={i}>{transition.cInput + " " + transition.cStack + "/" + transition.nStack}</tspan>
+                            <tspan x={cState.x + ((nState.x - cState.x) / 2)} y={(cState.y + ((nState.y - cState.y) / 2)) - (i * 20)} key={i} onContextMenu={e => transitionContextMenu(e, t)}>{transition.cInput + " " + transition.cStack + "/" + transition.nStack}</tspan>
                           );
                         }
                       })}
