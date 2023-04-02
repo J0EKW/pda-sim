@@ -16,6 +16,7 @@ const App:any = () => {
     const [stateId, setStateId] = useState(0);
     const [transitionId, setTransitionId] = useState(0);
     const [connectionId, setconnectionId] = useState(0);
+    const [traversalId, setTraversalId] = useState<number>(0);
     const [states, setStates] = useState<StateType[]>([]);
     const [transitions, setTransitions] = useState<TransitionType[]>([]);
     const [connections, setConnections] = useState<ConnectionType[]>([]);
@@ -26,13 +27,14 @@ const App:any = () => {
     const [stack, setStack] = useState<string>('Z');
     const [iHead, setIHead] = useState<number>(0);
     const [sHead, setSHead] = useState<number>(0);
-    const [runTree, setRunTree] = useState<TraversalType>({targets:[], cStateId:start, cStack:stack, cIHead:iHead, cSHead:sHead});
+    const [runTree, setRunTree] = useState<TraversalType[]>([{id:traversalId, parentId:-1, cStateId:start, cStack:stack, cIHead:iHead, cSHead:sHead}]);
     const [contextMenuVisible, setContextMenuVisible] = useState<Boolean>(false);
     const [contextMenuPos, setContextMenuPos] = useState<ContextMenuPosType>({x: 0, y: 0});
     const [contextMenuOptions, setContextMenuOptions] = useState<OptionType[]>([]);
     const [stateRenameVisible, setStateRenameVisible] = useState<Boolean>(false);
     const [selectedState, setSelectedState] = useState<number>(0);
     const [stateRenameVal, setStateRenameVal] = useState<string>('');
+    const [currentTraverseId, setCurrentTraverseId] = useState<number>(0);
 
     const addState = (nameParam: string = '', statesParam:StateType[]):[newState:StateType, newStateId:number, states:StateType[]] => {
       if (states.filter(state => state.name == nameParam).length > 0) {
@@ -171,88 +173,71 @@ const App:any = () => {
       return newConnections;
     }
 
-    const step = () => {
-      let runParent:TraversalType = runTree;
-      let runChild:TraversalType[] = [];
-      let options:TransitionType[] = [];
-      options = transitions.filter(transition => transition.cStateId == runParent.cStateId);
-      options = options.filter(transition => transition.cStack == runParent.cStack[runParent.cSHead]);
-      options = options.filter(transition => transition.cInput == input[runParent.cIHead]);
-      if (options.length < 1) {
-        return undefined;
-      }
-      options.forEach(option => {
-        runChild.push({
-          targets:[],
-          cStateId:option.nStateId,
-          cStack:stack,
-          cIHead:iHead,
-          cSHead:sHead
-        });
-      });
-    }
-
-    const populateTraversal = (pNode:TraversalType):TraversalType[] => {
-      console.log(pNode.cIHead);
-      let parent:TraversalType = pNode;
-      let options:TransitionType[] = [];
-      let childTargets:TraversalType[] = [];
-      let child:TraversalType;
-      options = transitions.filter(transition => transition.cStateId == parent.cStateId);
-      options = options.filter(transition => transition.cStack == parent.cStack[parent.cSHead]);
-      options = options.filter(transition => transition.cInput == input[parent.cIHead]);
-      if (options.length < 1) {
-        if (parent.cIHead === input.length) {
-          let finalTemp = final;
-          finalTemp.push(parent.cStateId);
-          setFinal(finalTemp);
-        }
-        return [];
-      }
-      options.forEach(option => {
-        child = {
-          targets:[],
-          cStateId: option.nStateId,
-          cStack: parent.cStack.slice(0, -1) + option.nStack,
-          cIHead: parent.cIHead + 1,
-          cSHead: parent.cSHead + option.nStack.length - 1
-        };
-        child.targets = populateTraversal(child);
-        childTargets.push(child);
-      });
-      return childTargets;
-    }
-
-    const evaluate = ():boolean => {
-      let result = false;
-      final.forEach(stateId => {
-        if (states.find(state => state.id === stateId)?.accept === true) {
-          result = true;
-        }
-      });
-      return result;
-    }
-
-    const run = () => {
-      reset();
-      let tempTree = runTree;
-      console.log(tempTree.cIHead);
-      let subTree:TraversalType[] = populateTraversal(tempTree);
-      tempTree.targets = subTree;
-      console.log(tempTree);
-      console.log(evaluate());
-    }
-
-    const reset = () => {
+    const clientReset = ():void => {
+      let startTraversal:TraversalType = {id:traversalId, parentId:-1, cStateId:start, cStack:'Z', cIHead:0, cSHead:0};
+      gsap.killTweensOf("*");
+      document.getElementById("animBall")?.setAttribute('style', '');
+      document.getElementById("animBall")?.setAttribute('transform', '');
+      document.getElementById("animBall")?.setAttribute('cx', '-200');
+      document.getElementById("animBall")?.setAttribute('cy', '-200');
       setStack('Z');
       setSHead(0);
       setIHead(0);
-      let empty:number[] = [];
-      final.forEach(element => {
-        final.pop();
+      setCurrentTraverseId(traversalId);
+      setRunTree([startTraversal]);
+      setTraversalId(traversalId + 1);
+    }
+
+    const clientStep = (): void => {
+      let newRunTree:TraversalType[] = [...runTree];
+      let root:TraversalType = newRunTree.filter(node => node.id === currentTraverseId)[0];
+      let leaves:TraversalType[] = [];
+      let transitionOptions:TransitionType[] = [];
+      let tempTraversalId:number = traversalId;
+      let tempStack:string;
+      let transitionId:number;
+      let animConnection:ConnectionType;
+      
+      transitionOptions = transitions.filter(transition =>transition.cStateId === root.cStateId);
+      transitionOptions = transitionOptions.filter(transition =>transition.cInput === input[root.cIHead]);
+      transitionOptions = transitionOptions.filter(transition =>transition.cStack === root.cStack[root.cSHead]);
+      
+      transitionOptions.forEach(transition => {
+        tempStack = stack;
+        tempStack = tempStack.slice(0, -1);
+        tempStack = tempStack + transition.nStack;
+        leaves.push({id:tempTraversalId, parentId:root.id, cStateId:transition.nStateId, cStack:tempStack, cIHead:root.cIHead+1, cSHead:tempStack.length - 1})
+        tempTraversalId += 1;
       });
-      let startTraversal:TraversalType = {targets:[], cStateId:start, cStack:stack, cIHead:iHead, cSHead:sHead};
-      setRunTree(startTraversal);
+      transitionId = transitionOptions[0].id;
+      console.log(transitionId);
+      console.log(connections);
+      animConnection = connections.filter(connection => connection.transitionIds.find(id => id == transitionId) !== undefined)[0];
+      console.log(animConnection);
+      let tween = gsap.to("#animBall", {
+        motionPath: {
+            path: "#connection" + animConnection.id,
+            align: "#connection" + animConnection.id,
+            alignOrigin: [0.5, 0.5]
+        },
+        ease: "none",
+        duration: 1,
+        repeat: -1,
+      });
+      tween.play();
+
+      leaves.forEach(leaf => {
+        newRunTree.push(leaf);
+      });
+
+      console.log(root);
+      console.log(leaves);
+      console.log(newRunTree);
+      setSHead(leaves[0].cSHead);
+      setStack(leaves[0].cStack);
+      setCurrentTraverseId(leaves[0].id);
+      setTraversalId(tempTraversalId);
+      setRunTree(newRunTree);
     }
     const [selected, setSelected] = useState<number>(-1);
     const [offset, setOffset] = useState({x:0, y:0});
@@ -536,20 +521,6 @@ const App:any = () => {
       };
     }, []);
 
-    gsap.to("#ball", {
-      duration: 5, 
-      repeat: 12,
-      repeatDelay: 3,
-      yoyo: true,
-      ease: "power1.inOut",
-      motionPath:{
-        path: "#path",
-        align: "#path",
-        autoRotate: true,
-        alignOrigin: [0.5, 0.5]
-      }
-    });
-
     return (
       <div className="app">
         <link rel="stylesheet" href="./App.css"></link>
@@ -597,7 +568,8 @@ const App:any = () => {
                 <input type='submit' className='add' value='+' onClick={() => clientAddAcceptSelector()}/>
               </div>
             </div>
-            <input type='submit' className='simStart' value='start' onClick={() => run()}/>
+            <input type='submit' className='simReset' value='Reset' onClick={() => clientReset()}/>
+            <input type='submit' className='simStep' value='step' onClick={() => clientStep()}/>
           </div>
           <div className='simWrapperRight'>
             {stateRenameVisible && 
@@ -627,13 +599,14 @@ const App:any = () => {
                 </feMerge>
               </filter>
             </defs>
+            <circle id='animBall' r="2%" stroke='white' fill='white'/>
             <svg>
             {connections.map((x, i) => {
               let cState = states.filter(state => state.id === x.cStateId)[0];
               let nState = states.filter(state => state.id === x.nStateId)[0];
+              let txtId:string = "connection" + x.id;
               if (cState !== undefined) {
                 if (x.cStateId == x.nStateId) {
-                  let txtId:string = "transition" + x.id;
                   return (
                     <svg key={i}>
                       <path id={txtId} d={"M " + (cState.x - 2) + " " + cState.y + " a 30,30 45 1 1 1 0"} stroke='white' strokeWidth="0.5%" fill="transparent" />
@@ -654,7 +627,7 @@ const App:any = () => {
                 if (findMirrorConnections(x.cStateId, x.nStateId)) {
                   return (
                     <svg key={i}>
-                      <path markerEnd='url(#head)' d={"M " + cState.x + " " + cState.y + " Q " + (cState.x +((nState.x - cState.x) / 2)) + " " + ((cState.y +((nState.y - cState.y) / 2)) * ((nState.y - cState.y) > 0 ? 1.3 : 0.7)) + " " + nState.x + " " + nState.y} stroke="white" strokeWidth="0.5%" fill="none" />
+                      <path id={txtId} markerEnd='url(#head)' d={"M " + cState.x + " " + cState.y + " Q " + (cState.x +((nState.x - cState.x) / 2)) + " " + ((cState.y +((nState.y - cState.y) / 2)) * ((nState.y - cState.y) > 0 ? 1.3 : 0.7)) + " " + nState.x + " " + nState.y} stroke="white" strokeWidth="0.5%" fill="none" />
                       <text filter="url(#solid)" x={cState.x + ((nState.x - cState.x) / 2)} y={cState.y + ((nState.y - cState.y) / 2)} fill='white' fontSize='20' textAnchor='middle'>
                       {x.transitionIds.map((y, i) => {
                           let transition = transitions.find(t => t.id == y);
@@ -671,7 +644,7 @@ const App:any = () => {
                 }
                 return (
                   <svg key={i}>
-                    <path markerEnd='url(#head)' d={"M " + cState.x + " " + cState.y + " L " + nState.x + " " + nState.y} stroke="white" strokeWidth="0.5%" fill="none" />
+                    <path id={txtId} markerEnd='url(#head)' d={"M " + cState.x + " " + cState.y + " L " + nState.x + " " + nState.y} stroke="white" strokeWidth="0.5%" fill="none" />
                     <text filter="url(#solid)" x={cState.x + ((nState.x - cState.x) / 2)} y={cState.y + ((nState.y - cState.y) / 2)} fill='white' fontSize='20' textAnchor='middle'>
                     {x.transitionIds.map((y, i) => {
                         let transition = transitions.find(t => t.id == y);

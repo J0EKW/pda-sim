@@ -181,7 +181,7 @@
   cursor: move;
 }
 
-.simStart {
+.simReset {
   border-style: solid;
   border-width: 1px;
   border-color: white;
@@ -189,12 +189,25 @@
   box-sizing: border-box;
   transition-duration: 0.2s;
   background-color: transparent;
-  width: 100%;
+  width: 50%;
   height: 10%;
   font-size: inherit;
 }
 
-.simStart:hover {
+.simStep {
+  border-style: solid;
+  border-width: 1px;
+  border-color: white;
+  color: white;
+  box-sizing: border-box;
+  transition-duration: 0.2s;
+  background-color: transparent;
+  width: 50%;
+  height: 10%;
+  font-size: inherit;
+}
+
+.simStep:hover, .simReset:hover {
   background-color: rgb(0, 100, 100);
 }
 
