@@ -5,7 +5,11 @@ import { ContextMenu } from './contextMenu';
 import './App.css';
 import { truncateSync } from 'fs';
 import { StateType, TransitionType, ConnectionType, TraversalType, ContextMenuPosType, OptionType } from './types';
-//import { PushdownAutomata } from './pushdownAutomata';
+import { transform } from 'typescript';
+import gsap from 'gsap';
+import { MotionPathPlugin } from "gsap/MotionPathPlugin";
+
+gsap.registerPlugin(MotionPathPlugin);
 
 const App:any = () => {
 
@@ -29,7 +33,6 @@ const App:any = () => {
     const [stateRenameVisible, setStateRenameVisible] = useState<Boolean>(false);
     const [selectedState, setSelectedState] = useState<number>(0);
     const [stateRenameVal, setStateRenameVal] = useState<string>('');
-    
 
     const addState = (nameParam: string = '', statesParam:StateType[]):[newState:StateType, newStateId:number, states:StateType[]] => {
       if (states.filter(state => state.name == nameParam).length > 0) {
@@ -49,21 +52,9 @@ const App:any = () => {
       return [newState, stateId+1, newStates];
     }
 
-    const removeState = (stateParamIds:number[]) => {
-      let newStates = states.filter(state => stateParamIds.find(s => s === state.id) === undefined);
-      if (newStates.length < states.length) {
-        let newAccept = accept.filter(state => stateParamIds.find(s => s === state) === undefined);
-        setAccept(newAccept);
-      }
-      let newTransitions = transitions.filter(transition => stateParamIds.find(s => (s === transition.cStateId) || (s === transition.nStateId)) === undefined);
-      let removedTransitions = transitions.filter(transition => stateParamIds.find(s => (s === transition.cStateId) || (s === transition.nStateId)) !== undefined);
-      let newConnections:ConnectionType[] = [];
-      removedTransitions.forEach(transition => {
-        newConnections = removeConnection(transition.cStateId, transition.nStateId, transition.id, connections);
-      });
-      setStates(newStates);
-      setTransitions(newTransitions);
-      setConnections(newConnections);
+    const removeState = (stateParamId:number, statesParam:StateType[]):StateType[] => {
+      let newStates:StateType[] = states.filter(state => state.id !== stateParamId);
+      return newStates;
     }
 
     const setStartState = (idParam:number, valueParam:boolean, statesParam:StateType[]):StateType[] => {
@@ -153,7 +144,7 @@ const App:any = () => {
       }
     }
 
-    const removeConnection = (cStateIdParam:number, nStateIdParam:number, transitionIdParam:number, connectionsParam:ConnectionType[]):ConnectionType[] => {
+    const removeConnectionTransition = (cStateIdParam:number, nStateIdParam:number, transitionIdParam:number, connectionsParam:ConnectionType[]):ConnectionType[] => {
       let newConnections:ConnectionType[] = [...connectionsParam];
       let connection:ConnectionType = newConnections.filter(c => ((c.cStateId == cStateIdParam) && (c.nStateId == nStateIdParam)))[0];
       
@@ -163,6 +154,18 @@ const App:any = () => {
         if (newConnections[connectionIndex].transitionIds.length < 1) {
           newConnections.splice(connectionIndex, 1);
         }
+      }
+
+      return newConnections;
+    }
+
+    const removeConnection = (connectionIdParam:number, connectionsParam:ConnectionType[]):ConnectionType[] => {
+      let newConnections:ConnectionType[] = [...connectionsParam];
+      let connection:ConnectionType = newConnections.filter(c => c.id === connectionIdParam)[0];
+      
+      if (connection !== undefined) {
+        let connectionIndex = newConnections.indexOf(connection);
+        newConnections.splice(connectionIndex, 1);
       }
 
       return newConnections;
@@ -283,8 +286,8 @@ const App:any = () => {
         let coord = getMousePosition(evt);
         let state = states.filter(state => state.id == selected)[0];
         let otherStates = states.filter(state => state.id !== selected);
-        state.x = coord.x - offset.x;
-        state.y = coord.y - offset.y;
+        state.x = (coord.x - offset.x);
+        state.y = (coord.y - offset.y);
         setStates([...otherStates, state]);
       }
     }
@@ -294,6 +297,11 @@ const App:any = () => {
       return mConnections.length > 0;
     }
 
+    const setupStateRename = (stateIdParam:number) => {
+      setSelectedState(stateIdParam);
+      setStateRenameVisible(true);
+    }
+
     const stateContextMenu = (event:React.MouseEvent<SVGCircleElement|SVGTextElement, MouseEvent>, stateParam:StateType) => {
       event.preventDefault();
       setContextMenuVisible(true);
@@ -301,7 +309,7 @@ const App:any = () => {
       let newOptions:OptionType[] = [];
       newOptions.push({
         label: 'remove',
-        func: () => removeState([stateParam.id])
+        func: () => clientRemoveState(stateParam.id)
       });
       newOptions.push({
         label: 'rename',
@@ -324,13 +332,12 @@ const App:any = () => {
       setContextMenuOptions(newOptions);
     }
 
-
     const clientRemoveTransition = (transitionParam:TransitionType):void => {
       let newTransitions:TransitionType[] = [...transitions];
       let newConnections:ConnectionType[] = [...connections];
       
       newTransitions = removeTransition(transitionParam.id, newTransitions);
-      newConnections = removeConnection(transitionParam.cStateId, transitionParam.nStateId, transitionParam.id, newConnections);
+      newConnections = removeConnectionTransition(transitionParam.cStateId, transitionParam.nStateId, transitionParam.id, newConnections);
       
       setTransitions(newTransitions);
       setConnections(newConnections);
@@ -347,7 +354,7 @@ const App:any = () => {
       let newConnection:ConnectionType;
       let newState:StateType;
 
-      newConnections = removeConnection(newTransitions[index].cStateId, newTransitions[index].nStateId, newTransitions[index].id, newConnections);
+      newConnections = removeConnectionTransition(newTransitions[index].cStateId, newTransitions[index].nStateId, newTransitions[index].id, newConnections);
       if (states.filter(state => state.name == value).length < 1) {
         [newState, newStateId, newStates] = addState(value, newStates);
       } else {
@@ -375,7 +382,7 @@ const App:any = () => {
       let newConnection:ConnectionType;
       let newState:StateType;
 
-      newConnections = removeConnection(newTransitions[index].cStateId, newTransitions[index].nStateId, newTransitions[index].id, newConnections);
+      newConnections = removeConnectionTransition(newTransitions[index].cStateId, newTransitions[index].nStateId, newTransitions[index].id, newConnections);
       if (states.filter(state => state.name == value).length < 1) {
         [newState, newStateId, newStates] = addState(value, newStates);
       } else {
@@ -482,6 +489,29 @@ const App:any = () => {
       setStates(newStates);
     }
 
+    const clientRemoveState = (stateId:number): void => {
+      let newStates:StateType[] = [...states];
+      let newConnections:ConnectionType[] = [...connections];
+      let newTransitions:TransitionType[] = [...transitions];
+
+      newStates = removeState(stateId, newStates);
+
+      let targetTransitions:TransitionType[] = newTransitions.filter(transition => (transition.cStateId === stateId) || (transition.nStateId === stateId));
+      let targetConnections:ConnectionType[];
+
+      targetTransitions.forEach(transition => {
+        newTransitions    = removeTransition(transition.id, newTransitions);
+        targetConnections = newConnections.filter(connection => connection.transitionIds.filter(id => id === transition.id).length > 0);
+        targetConnections.forEach(connection => {
+          newConnections = removeConnection(connection.id, newConnections);
+        })
+      });
+
+      setStates(newStates);
+      setTransitions(newTransitions);
+      setConnections(newConnections);
+    }
+
     const clientAddAcceptSelector = ():void => {
       let newStates:StateType[] = [...states];
       let newAccepts:number[]   = [...accept];
@@ -496,19 +526,29 @@ const App:any = () => {
       setStates(newStates);
     }
 
-    const setupStateRename = (stateIdParam:number) => {
-      setSelectedState(stateIdParam);
-      setStateRenameVisible(true);
-    }
-      
-
     useEffect(() => {
-      const handleClick = () => setContextMenuVisible(false);
+      const handleClick = () => {
+        setContextMenuVisible(false);
+      };
       window.addEventListener('click', handleClick);
       return () => {
         window.removeEventListener("click", handleClick);
       };
     }, []);
+
+    gsap.to("#ball", {
+      duration: 5, 
+      repeat: 12,
+      repeatDelay: 3,
+      yoyo: true,
+      ease: "power1.inOut",
+      motionPath:{
+        path: "#path",
+        align: "#path",
+        autoRotate: true,
+        alignOrigin: [0.5, 0.5]
+      }
+    });
 
     return (
       <div className="app">
@@ -560,14 +600,14 @@ const App:any = () => {
             <input type='submit' className='simStart' value='start' onClick={() => run()}/>
           </div>
           <div className='simWrapperRight'>
-          {stateRenameVisible && 
-           <div className='renameStateWrapper'>
-             <div className='renameStateLabel'>Please Enter the new State name</div>
-             <input className='remove' type='submit' value='x' onClick={() => setStateRenameVisible(false)}/>
-             <input className='renameStateInput' type='text' maxLength={2} onChange={(e) => setStateRenameVal(e.currentTarget.value)}></input>
-             <input className='add' type='submit' value='🗸' onClick={() => {updateStateName(selectedState, stateRenameVal); setStateRenameVisible(false);}} />
-           </div>}
-          <svg xmlns="http://www.w3.org/2000/svg" id="myCanvas" viewBox='0 0 100% 100%' className='guiSim' onMouseMove={(e) => drag(e)} onMouseUp={() => setSelected(-1)}>
+            {stateRenameVisible && 
+            <div className='renameStateWrapper'>
+              <div className='renameStateLabel'>Please Enter the new State name</div>
+              <input className='remove' type='submit' value='x' onClick={() => setStateRenameVisible(false)}/>
+              <input className='renameStateInput' type='text' maxLength={2} onChange={(e) => setStateRenameVal(e.currentTarget.value)}></input>
+              <input className='add' type='submit' value='🗸' onClick={() => {updateStateName(selectedState, stateRenameVal); setStateRenameVisible(false);}} />
+            </div>}
+          <svg xmlns="http://www.w3.org/2000/svg" id="myCanvas" viewBox='0 0 100% 100%' width='100%' height='100%' className='guiSim' onMouseMove={(e) => drag(e)} onMouseUp={() => setSelected(-1)}>
             <defs>
               <marker 
                 id='head' 
@@ -591,46 +631,48 @@ const App:any = () => {
             {connections.map((x, i) => {
               let cState = states.filter(state => state.id === x.cStateId)[0];
               let nState = states.filter(state => state.id === x.nStateId)[0];
-              if (x.cStateId == x.nStateId) {
-                return (
-                  <svg key={i}>
-                    <path d={"M " + (cState.x - 2) + " " + cState.y + " a 30,30 45 1 1 1 0"} stroke="white" strokeWidth="0.5%" fill="transparent" />
-                    <text filter="url(#solid)" x={cState.x} y={cState.y - 50} fill='white' fontSize='20' textAnchor='middle'>
+              if (cState !== undefined) {
+                if (x.cStateId == x.nStateId) {
+                  let txtId:string = "transition" + x.id;
+                  return (
+                    <svg key={i}>
+                      <path id={txtId} d={"M " + (cState.x - 2) + " " + cState.y + " a 30,30 45 1 1 1 0"} stroke='white' strokeWidth="0.5%" fill="transparent" />
+                      <text filter="url(#solid)" x={cState.x} y={cState.y - 50} fill='white' fontSize='20' textAnchor='middle'>
+                        {x.transitionIds.map((y, i) => {
+                          let transition = transitions.find(t => t.id == y);
+                          if (transition !== undefined) {
+                            let t:TransitionType = transition;
+                            return(
+                              <tspan x={cState.x} y={cState.y - 50 - (i * 20)} key={i} onContextMenu={e => transitionContextMenu(e, t)}>{transition.cInput + " " + transition.cStack + "/" + transition.nStack}</tspan>
+                            );
+                          }
+                        })}
+                      </text> 
+                    </svg>
+                  );
+                }
+                if (findMirrorConnections(x.cStateId, x.nStateId)) {
+                  return (
+                    <svg key={i}>
+                      <path markerEnd='url(#head)' d={"M " + cState.x + " " + cState.y + " Q " + (cState.x +((nState.x - cState.x) / 2)) + " " + ((cState.y +((nState.y - cState.y) / 2)) * ((nState.y - cState.y) > 0 ? 1.3 : 0.7)) + " " + nState.x + " " + nState.y} stroke="white" strokeWidth="0.5%" fill="none" />
+                      <text filter="url(#solid)" x={cState.x + ((nState.x - cState.x) / 2)} y={cState.y + ((nState.y - cState.y) / 2)} fill='white' fontSize='20' textAnchor='middle'>
                       {x.transitionIds.map((y, i) => {
-                        let transition = transitions.find(t => t.id == y);
-                        if (transition !== undefined) {
-                          let t:TransitionType = transition;
-                          return(
-                            <tspan x={cState.x} y={cState.y - 50 - (i * 20)} key={i} onContextMenu={e => transitionContextMenu(e, t)}>{transition.cInput + " " + transition.cStack + "/" + transition.nStack}</tspan>
-                          );
-                        }
-                      })}
-                    </text> 
-                  </svg>
-                );
-              }
-              if (findMirrorConnections(x.cStateId, x.nStateId)) {
+                          let transition = transitions.find(t => t.id == y);
+                          if (transition !== undefined) {
+                            let t:TransitionType = transition;
+                            return(
+                              <tspan x={cState.x + ((nState.x - cState.x) / 2)} y={(cState.y + ((nState.y - cState.y) / 2)) + ((nState.y - cState.y) > 0 ? 1 : -1) * (20 + (i * 20))} key={i} onContextMenu={e => transitionContextMenu(e, t)}>{transition.cInput + " " + transition.cStack + "/" + transition.nStack}</tspan>
+                            );
+                          }
+                        })}
+                      </text> 
+                    </svg>
+                  );
+                }
                 return (
                   <svg key={i}>
-                    <path  markerEnd='url(#head)' d={"M " + cState.x + " " + cState.y + " Q " + (cState.x +((nState.x - cState.x) / 2)) + " " + ((cState.y +((nState.y - cState.y) / 2)) * ((nState.y - cState.y) > 0 ? 1.3 : 0.7)) + " " + nState.x + " " + nState.y} stroke="white" strokeWidth="0.5%" fill="none" />
-                    <text  filter="url(#solid)" x={cState.x + ((nState.x - cState.x) / 2)} y={cState.y + ((nState.y - cState.y) / 2)} fill='white' fontSize='20' textAnchor='middle'>
-                    {x.transitionIds.map((y, i) => {
-                        let transition = transitions.find(t => t.id == y);
-                        if (transition !== undefined) {
-                          let t:TransitionType = transition;
-                          return(
-                            <tspan x={cState.x + ((nState.x - cState.x) / 2)} y={(cState.y + ((nState.y - cState.y) / 2)) + ((nState.y - cState.y) > 0 ? 1 : -1) * (20 + (i * 20))} key={i} onContextMenu={e => transitionContextMenu(e, t)}>{transition.cInput + " " + transition.cStack + "/" + transition.nStack}</tspan>
-                          );
-                        }
-                      })}
-                    </text> 
-                  </svg>
-                );
-              }
-                return (
-                  <svg key={i}>
-                    <path  markerEnd='url(#head)' d={"M " + cState.x + " " + cState.y + " L " + nState.x + " " + nState.y} stroke="white" strokeWidth="0.5%" fill="none" />
-                    <text  filter="url(#solid)" x={cState.x + ((nState.x - cState.x) / 2)} y={cState.y + ((nState.y - cState.y) / 2)} fill='white' fontSize='20' textAnchor='middle'>
+                    <path markerEnd='url(#head)' d={"M " + cState.x + " " + cState.y + " L " + nState.x + " " + nState.y} stroke="white" strokeWidth="0.5%" fill="none" />
+                    <text filter="url(#solid)" x={cState.x + ((nState.x - cState.x) / 2)} y={cState.y + ((nState.y - cState.y) / 2)} fill='white' fontSize='20' textAnchor='middle'>
                     {x.transitionIds.map((y, i) => {
                         let transition = transitions.find(t => t.id == y);
                         if (transition !== undefined) {
@@ -643,12 +685,13 @@ const App:any = () => {
                     </text> 
                   </svg>
                 );
+              }
             })}
             </svg>
             {states.map((x, i) => {return (
               <svg>
-                <circle className='draggable' cx={x.x} cy={x.y} r="5%" stroke="white" strokeWidth="0.5%" fill="rgb(44, 44, 44)" onMouseDown={(e) => startDrag(e, x.id)} onContextMenu={e => stateContextMenu(e, x)}/>
-                <text x={x.x} y={x.y + 8} fill='white' fontSize='25' textAnchor='middle' onMouseDown={(e) => startDrag(e, x.id)} onContextMenu={e => stateContextMenu(e, x)}>{x.name}</text>
+                <circle className='draggable svg' cx={x.x} cy={x.y} r="5%" stroke="white" strokeWidth="0.5%" fill="rgb(44, 44, 44)" onMouseDown={(e) => startDrag(e, x.id)} onContextMenu={e => stateContextMenu(e, x)}/>
+                <text className='svg' x={x.x} y={x.y + 8} fill='white' fontSize='25' textAnchor='middle' onMouseDown={(e) => startDrag(e, x.id)} onContextMenu={e => stateContextMenu(e, x)}>{x.name}</text>
               </svg>
             )})}
           </svg>
@@ -666,7 +709,6 @@ const App:any = () => {
           {input}
         </div>
         {contextMenuVisible && <ContextMenu left={contextMenuPos.x} top={contextMenuPos.y} options={contextMenuOptions}/>}
-        {stateRenameVisible && <ContextMenu left={contextMenuPos.x} top={contextMenuPos.y} options={contextMenuOptions}/>}
       </div>
   );
 }
