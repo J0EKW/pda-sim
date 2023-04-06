@@ -18,7 +18,8 @@ export type TransitionType = {
   }
 
 export type TraversalType = {
-    targets: TraversalType[],
+    readonly id: number,
+    parentId: number,
     cStateId: number,
     cStack: string,
     cIHead: number,
