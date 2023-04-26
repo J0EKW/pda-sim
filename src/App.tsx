@@ -5,14 +5,15 @@ import { ContextMenu } from './contextMenu';
 import './App.css';
 import { truncateSync } from 'fs';
 import { StateType, TransitionType, ConnectionType, TraversalType, ContextMenuPosType, OptionType } from './types';
-import { transform } from 'typescript';
+import { setTokenSourceMapRange, transform } from 'typescript';
 import gsap from 'gsap';
 import { MotionPathPlugin } from "gsap/MotionPathPlugin";
+import { Z_ASCII } from 'zlib';
 
 gsap.registerPlugin(MotionPathPlugin);
-
 const App:any = () => {
 
+    const midi = require('midi-sounds-react');
     const [stateId, setStateId] = useState(0);
     const [transitionId, setTransitionId] = useState(0);
     const [connectionId, setconnectionId] = useState(0);
@@ -28,13 +29,20 @@ const App:any = () => {
     const [iHead, setIHead] = useState<number>(0);
     const [sHead, setSHead] = useState<number>(0);
     const [runTree, setRunTree] = useState<TraversalType[]>([{id:traversalId, parentId:-1, cStateId:start, cStack:stack, cIHead:iHead, cSHead:sHead}]);
+    const [runPath, setRunPath] = useState<TraversalType[]>(runTree);
     const [contextMenuVisible, setContextMenuVisible] = useState<Boolean>(false);
     const [contextMenuPos, setContextMenuPos] = useState<ContextMenuPosType>({x: 0, y: 0});
     const [contextMenuOptions, setContextMenuOptions] = useState<OptionType[]>([]);
     const [stateRenameVisible, setStateRenameVisible] = useState<Boolean>(false);
     const [selectedState, setSelectedState] = useState<number>(0);
     const [stateRenameVal, setStateRenameVal] = useState<string>('');
-    const [currentTraverseId, setCurrentTraverseId] = useState<number>(0);
+    const [currentTraversalId, setCurrentTraversalId] = useState<number>(0);
+    const [acceptTraversalId, setacceptTraversalId] = useState<number>(-1);
+    const [runEnd, setRunEnd] = useState<boolean>(false);
+    const [isLoaded, setIsLoaded] = useState<boolean>(false);
+    const [removeAnimElem, setRemoveAnimElem] = useState<boolean>(false);
+    const [runTreeSet, setRunTreeSet] = useState<boolean>(false);
+    const [sound, setSound] = useState<MIDIVal>();
 
     const addState = (nameParam: string = '', statesParam:StateType[]):[newState:StateType, newStateId:number, states:StateType[]] => {
       if (states.filter(state => state.name == nameParam).length > 0) {
@@ -174,71 +182,635 @@ const App:any = () => {
     }
 
     const clientReset = ():void => {
-      let startTraversal:TraversalType = {id:traversalId, parentId:-1, cStateId:start, cStack:'Z', cIHead:0, cSHead:0};
+      let startTraversal:TraversalType = {id:0, parentId:-1, cStateId:start, cStack:'Z', cIHead:0, cSHead:0};
       gsap.killTweensOf("*");
-      document.getElementById("animBall")?.setAttribute('style', '');
-      document.getElementById("animBall")?.setAttribute('transform', '');
-      document.getElementById("animBall")?.setAttribute('cx', '-200');
-      document.getElementById("animBall")?.setAttribute('cy', '-200');
+      runPath.forEach((x, i) => {
+        let animBall = document.getElementById('animBall' + i);
+        let animPulse = document.getElementById('animPulse' + i);
+        let animPulseSuccess = document.getElementById('animSuccessPulse' + i);
+
+        animBall?.remove();
+        animPulse?.remove();
+        animPulseSuccess?.remove();
+      });
+      let animPulseSuccess = document.getElementById('animSuccessPulse' + runPath.length + 1);
+      animPulseSuccess?.remove();
+      /* console.log(document.getElementsByClassName('pathBall'));
+      document.querySelectorAll('.pathBall').forEach(element => element.remove());
+      document.getElementById("animPulse")?.setAttribute("cx", '-200');
+      document.getElementById("animPulse")?.setAttribute("cy", '-200'); */
       setStack('Z');
       setSHead(0);
       setIHead(0);
-      setCurrentTraverseId(traversalId);
+      //setCurrentTraverseId(0);
       setRunTree([startTraversal]);
-      setTraversalId(traversalId + 1);
+      setRunPath([startTraversal]);
+      setTraversalId(0);
+      setRunEnd(false);
+      setRemoveAnimElem(true);
+      setRunTreeSet(false);
+      setacceptTraversalId(-1);
+      let stackTxt = document.getElementById('stack')
+          if (stackTxt) {
+            stackTxt.innerHTML = 'Z';
+          }
     }
+    useEffect(() => {
+      
+      setRemoveAnimElem(false);
+    }, [removeAnimElem]);
 
     const clientStep = (): void => {
+      let newRunTree:TraversalType[] = [];
+      let path:TraversalType[] = runPath;
+      let traversalId:number = currentTraversalId;
+      let acceptId:number = acceptTraversalId;
+
+      if (!runTreeSet) {
+        newRunTree = [{id:0, parentId:-1, cStateId:start, cStack:'Z', cIHead:0, cSHead:0}];
+        traversalId = 0;
+        let transitionOptions:TransitionType[] = [];
+        let tempId:number = 1;
+        for (let index = 0; index < newRunTree.length; index++) {
+          transitionOptions = transitions.filter(transition => transition.cStateId === newRunTree[index].cStateId);
+          transitionOptions = transitionOptions.filter(transition => transition.cInput === input[newRunTree[index].cIHead]);
+          transitionOptions = transitionOptions.filter(transition => transition.cStack === newRunTree[index].cStack[newRunTree[index].cSHead]);
+          if (transitionOptions.length > 0) {
+            transitionOptions.forEach(transition => {
+              let newStack = newRunTree[index].cStack.slice(0, -1) + transition.nStack;
+              newRunTree.push({
+                id:tempId,
+                parentId:newRunTree[index].id,
+                cStateId:transition.nStateId,
+                cStack:newStack,
+                cIHead:newRunTree[index].cIHead + 1,
+                cSHead:newStack.length - 1
+              })
+              tempId++;
+            });
+          } else {
+            if (states.find(s => s.id == newRunTree[index].cStateId)?.accept) {
+              acceptId = newRunTree[index].id;
+            }
+          }
+        }
+        setRunTreeSet(true);
+        setacceptTraversalId(acceptId);
+        setRunTree(newRunTree);
+      } else {
+        newRunTree = [...runTree];
+      }
+      if (acceptId != -1) {
+        path = [newRunTree.filter(t => t.id === acceptId)[0]];
+        for (let index = 0; index < path.length; index++) {
+          let parent = newRunTree.filter(t => t.id === path[0].parentId)[0];
+          console.log(parent);
+          if (parent === undefined) {
+            break;
+          }
+          path.unshift(parent);
+        }
+        console.log(path);
+        console.log("accepted");
+      } else {
+        path = [newRunTree[0]];
+        for (let index = 0; index < path.length; index++) {
+          let child = newRunTree.filter(t => t.parentId === path[path.length - 1].id)[0];
+          console.log(child);
+          if (child === undefined) {
+            break;
+          }
+          path.push(child);
+        }
+        console.log(path);
+        console.log("rejected");
+      }
+      setRunPath(path);
+      gsap.killTweensOf("*");
+
+      let current = path.filter(t => t.id === traversalId)[0];
+      let target  = path.filter(t => t.parentId === traversalId)[0];
+      let pulse   = document.getElementById("animPulse0");
+      let ball    = document.getElementById("animBall0");
+
+      if (target !== undefined) {
+        let animConnection = connections.filter(c => (c.cStateId == current.cStateId) && (c.nStateId == target.cStateId))[0];
+        let state = states.filter(s => s.id == target.cStateId)[0];
+        let tween;
+        if (pulse) {
+          pulse.setAttribute("cx", String(state.x));
+          pulse.setAttribute("cy", String(state.y));
+          pulse.getAnimations().forEach(anim => {anim.cancel(); anim.play();});
+        } else {
+          //<circle id={'animPulse' + state.id} className='pulse' cx={String(state.x)} cy={String(state.y)} r="5%" stroke='white' strokeWidth='0.5%' fill='transparent'/>;
+          let newPulse = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+          let parent = document.getElementById('myCanvas');
+          newPulse.setAttribute('id', 'animPulse0');
+          newPulse.setAttribute('cx', String(state.x));
+          newPulse.setAttribute('cy', String(state.y));
+          newPulse.setAttribute('r', '5%');
+          newPulse.setAttribute('stroke', 'white');
+          newPulse.setAttribute('strokeWidth', '5%');
+          newPulse.setAttribute('fill', 'transparent');
+          newPulse.style.setProperty('animation-iteration-count', 'infinite');
+          newPulse.style.setProperty('animation-delay', '1.5s');
+          parent?.appendChild(newPulse);
+          newPulse.classList.add('pulse');
+        }
+
+        if (!ball) {
+          let newBall = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+          let parent = document.getElementById('myCanvas');
+          newBall.setAttribute('cx', '-50');
+          newBall.setAttribute('cy', '-50');
+          newBall.setAttribute('id', 'animBall0');
+          newBall.setAttribute('className', 'pathBall');
+          newBall.setAttribute('r', '2%');
+          newBall.setAttribute('stroke', 'white');
+          newBall.setAttribute('fill', 'white');
+          parent?.insertBefore(newBall, parent?.children[0]);
+          //parent?.appendChild(newBall);
+        }
+        tween = gsap.to("#animBall0", {
+          motionPath: {
+              path: "#connection" + animConnection.id,
+              align: "#connection" + animConnection.id,
+              alignOrigin: [0.5, 0.5]
+          },
+          ease: "none",
+          duration: 1.5,
+          repeat: -1,
+        });
+        tween.play();
+        setCurrentTraversalId(target.id);
+      } else if (current.id === acceptId && current.cIHead === input.length) {
+        if (ball) {
+          ball.remove();
+        }
+        if (pulse) {
+          pulse.remove();
+        }
+        let pathStates = states.filter(s => path.find(p => p.cStateId === s.id) !== undefined);
+        pathStates.forEach(s => {
+          if (s !== undefined) {
+            let newPulse = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            let parent = document.getElementById('myCanvas');
+            newPulse.setAttribute('id', 'animSuccessPulse' + s.id);
+            newPulse.setAttribute('cx', String(s.x));
+            newPulse.setAttribute('cy', String(s.y));
+            newPulse.setAttribute('r', '5%');
+            newPulse.setAttribute('stroke', 'white');
+            newPulse.setAttribute('strokeWidth', '5%');
+            newPulse.setAttribute('fill', 'transparent');
+            newPulse.style.setProperty('animation-iteration-count', 'infinite');
+            parent?.appendChild(newPulse);
+            newPulse.classList.add('pulseSuccess');
+          }
+        });
+          
+      } else {
+
+        console.log(current.cIHead);
+        console.log(input.length);
+        console.log(states);
+      }
+      let stackTxt = document.getElementById('stack')
+      if (stackTxt) {stackTxt.innerHTML = current.cStack}
+      setStack(current.cStack);
+
+      /* let root:TraversalType = newRunTree.filter(node => currentTraverseId === node.id)[0];
+      let leaves:TraversalType[] = [];
+      let transitionOptions:TransitionType[] = [];
+      let tempTraversalIds:number = traversalId;
+      let tempStack:string;
+      let transitionId:number;
+      let animConnection:ConnectionType;
+      let state:StateType;
+      let tweens:gsap.core.Tween[] = [];
+
+        transitionOptions = transitions.filter(transition =>transition.cStateId === root.cStateId);
+        transitionOptions = transitionOptions.filter(transition =>transition.cInput === input[root.cIHead]);
+        transitionOptions = transitionOptions.filter(transition =>transition.cStack === root.cStack[root.cSHead]);
+        if (transitionOptions.length === 0) {
+          state = states.filter(s => s.id == root.cStateId)[0];
+          console.log(state.accept);
+          gsap.killTweensOf("*");
+          clientReset();
+          setRunEnd(true);
+        } else {
+          connections.forEach(c => {
+            let animBall = document.getElementById('animBall' + c.id);
+            let animPulse = document.getElementById('animPulse' + c.id);
+            if (animBall) {
+              animBall.remove();
+            }
+            if (animPulse) {
+              animPulse.remove();
+            }
+          })
+          console.log(transitionOptions);
+          transitionOptions.forEach(transition => {
+            tempStack = stack;
+            tempStack = tempStack.slice(0, -1);
+            tempStack = tempStack + transition.nStack;
+            leaves.push({id:tempTraversalIds, parentId:root.id, cStateId:transition.nStateId, cStack:tempStack, cIHead:root.cIHead+1, cSHead:tempStack.length - 1})
+            tempTraversalIds += 1;
+
+            transitionId = transition.id;
+            animConnection = connections.filter(connection => connection.transitionIds.find(id => id == transitionId) !== undefined)[0];
+            state = states.filter(s => s.id == transition.nStateId)[0];
+            let pulse = document.getElementById("animPulse" + animConnection.id);
+            let ball = document.getElementById("animBall" + animConnection.id);
+            if (pulse) {
+              pulse.setAttribute("cx", String(state.x));
+              pulse.setAttribute("cy", String(state.y));
+              pulse.getAnimations().forEach(anim => {anim.cancel(); anim.play();});
+            } else {
+              //<circle id={'animPulse' + state.id} className='pulse' cx={String(state.x)} cy={String(state.y)} r="5%" stroke='white' strokeWidth='0.5%' fill='transparent'/>;
+              let newPulse = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+              let parent = document.getElementById('myCanvas');
+              newPulse.setAttribute('id', 'animPulse' + animConnection.id);
+              newPulse.setAttribute('cx', String(state.x));
+              newPulse.setAttribute('cy', String(state.y));
+              newPulse.setAttribute('r', '5%');
+              newPulse.setAttribute('stroke', 'white');
+              newPulse.setAttribute('strokeWidth', '5%');
+              newPulse.setAttribute('fill', 'transparent');
+              parent?.appendChild(newPulse);
+              newPulse.classList.add('pulse');
+            }
+
+            if (!ball) {
+              let newBall = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+              let parent = document.getElementById('myCanvas');
+              newBall.setAttribute('id', 'animBall' + animConnection.id);
+              newBall.setAttribute('className', 'pathBall');
+              newBall.setAttribute('r', '2%');
+              newBall.setAttribute('stroke', 'white');
+              newBall.setAttribute('fill', 'white');
+              parent?.insertBefore(newBall, parent?.children[0]);
+              //parent?.appendChild(newBall);
+            }
+            tweens[state.id] = gsap.to("#animBall" + animConnection.id, {
+              motionPath: {
+                  path: "#connection" + animConnection.id,
+                  align: "#connection" + animConnection.id,
+                  alignOrigin: [0.5, 0.5]
+              },
+              ease: "none",
+              duration: 1.5,
+              repeat: -1,
+            });
+            tweens[state.id].play();
+          });
+    
+          leaves.forEach(leaf => {
+            newRunTree.push(leaf);
+          });
+      };
+        setSHead(leaves[0].cSHead);
+        setStack(leaves[0].cStack);
+        setCurrentTraverseId(leaves[0].id);
+        setTraversalId(tempTraversalIds);
+        setRunTree(newRunTree); */
+    }
+
+    const clientRun = (): void => {
+      let newRunTree:TraversalType[] = [];
+      let path:TraversalType[] = runPath;
+      let traversalId:number = currentTraversalId;
+      let acceptId:number = acceptTraversalId;
+
+      if (!runTreeSet) {
+        newRunTree = [{id:0, parentId:-1, cStateId:start, cStack:'Z', cIHead:0, cSHead:0}];
+        traversalId = 0;
+        let transitionOptions:TransitionType[] = [];
+        let tempId:number = 1;
+        for (let index = 0; index < newRunTree.length; index++) {
+          transitionOptions = transitions.filter(transition => transition.cStateId === newRunTree[index].cStateId);
+          transitionOptions = transitionOptions.filter(transition => transition.cInput === input[newRunTree[index].cIHead]);
+          transitionOptions = transitionOptions.filter(transition => transition.cStack === newRunTree[index].cStack[newRunTree[index].cSHead]);
+          if (transitionOptions.length > 0) {
+            transitionOptions.forEach(transition => {
+              let newStack = newRunTree[index].cStack.slice(0, -1) + transition.nStack;
+              newRunTree.push({
+                id:tempId,
+                parentId:newRunTree[index].id,
+                cStateId:transition.nStateId,
+                cStack:newStack,
+                cIHead:newRunTree[index].cIHead + 1,
+                cSHead:newStack.length - 1
+              })
+              tempId++;
+            });
+          } else {
+            if (states.find(s => s.id == newRunTree[index].cStateId)?.accept) {
+              acceptId = newRunTree[index].id;
+            }
+          }
+        }
+        setRunTreeSet(true);
+        setacceptTraversalId(acceptId);
+        setRunTree(newRunTree);
+      } else {
+        newRunTree = [...runTree];
+      }
+      if (acceptId != -1) {
+        path = [newRunTree.filter(t => t.id === acceptId)[0]];
+        for (let index = 0; index < path.length; index++) {
+          let parent = newRunTree.filter(t => t.id === path[0].parentId)[0];
+          console.log(parent);
+          if (parent === undefined) {
+            break;
+          }
+          path.unshift(parent);
+        }
+        console.log(path);
+        console.log("accepted");
+      } else {
+        path = [newRunTree[0]];
+        for (let index = 0; index < path.length; index++) {
+          let child = newRunTree.filter(t => t.parentId === path[path.length - 1].id)[0];
+          console.log(child);
+          if (child === undefined) {
+            break;
+          }
+          path.push(child);
+        }
+        console.log(path);
+        console.log("rejected");
+      }
+      gsap.killTweensOf("*");
+
+      for (let index = 0; index < path.length; index++)
+      {
+        let current = path.filter(t => t.id === traversalId)[0];
+        let target  = path.filter(t => t.parentId === traversalId)[0];
+        let pulse   = document.getElementById("animPulse" + index);
+        let ball    = document.getElementById("animBall" + index);
+
+        if (target !== undefined) {
+          let animConnection = connections.filter(c => (c.cStateId == current.cStateId) && (c.nStateId == target.cStateId))[0];
+          let state = states.filter(s => s.id == target.cStateId)[0];
+          let tween;
+          if (pulse) {
+            pulse.setAttribute("cx", String(state.x));
+            pulse.setAttribute("cy", String(state.y));
+            pulse.getAnimations().forEach(anim => {anim.cancel(); anim.play();});
+          } else {
+            //<circle id={'animPulse' + state.id} className='pulse' cx={String(state.x)} cy={String(state.y)} r="5%" stroke='white' strokeWidth='0.5%' fill='transparent'/>;
+            let newPulse = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            let parent = document.getElementById('myCanvas');
+            newPulse.setAttribute('id', 'animPulse' + index);
+            newPulse.setAttribute('cx', String(state.x));
+            newPulse.setAttribute('cy', String(state.y));
+            newPulse.setAttribute('r', '5%');
+            newPulse.setAttribute('stroke', 'white');
+            newPulse.setAttribute('strokeWidth', '5%');
+            newPulse.setAttribute('fill', 'transparent');
+            newPulse.style.setProperty('animation-delay', String(1.5 + (index * 2)) + 's');
+            newPulse.style.setProperty('animation-iteration-count', '1');
+            parent?.appendChild(newPulse);
+            newPulse.classList.add('pulse');
+          }
+
+          if (!ball) {
+            let newBall = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            let parent = document.getElementById('myCanvas');
+            newBall.setAttribute('cx', '-50');
+            newBall.setAttribute('cy', '-50');
+            newBall.setAttribute('id', 'animBall' + index);
+            newBall.setAttribute('className', 'pathBall');
+            newBall.setAttribute('r', '2%');
+            newBall.setAttribute('stroke', 'white');
+            newBall.setAttribute('fill', 'white');
+            parent?.insertBefore(newBall, parent?.children[0]);
+            //parent?.appendChild(newBall);
+          }
+          tween = gsap.to("#animBall" + index, {
+            motionPath: {
+                path: "#connection" + animConnection.id,
+                align: "#connection" + animConnection.id,
+                alignOrigin: [0.5, 0.5]
+            },
+            ease: "none",
+            duration: 1.5,
+            repeat: 0,
+            delay: index * 2,
+          });
+          tween.play();
+          traversalId = target.id;
+        } else if (current.id === acceptId && current.cIHead === input.length) {
+          if (ball) {
+            ball.remove();
+          }
+          if (pulse) {
+            pulse.remove();
+          }
+          let pathStates = states.filter(s => path.find(p => p.cStateId === s.id) !== undefined);
+          pathStates.forEach(s => {
+            if (s !== undefined) {
+              let newPulse = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+              let parent = document.getElementById('myCanvas');
+              newPulse.setAttribute('id', 'animSuccessPulse' + s.id);
+              newPulse.setAttribute('cx', String(s.x));
+              newPulse.setAttribute('cy', String(s.y));
+              newPulse.setAttribute('r', '5%');
+              newPulse.setAttribute('stroke', 'white');
+              newPulse.setAttribute('strokeWidth', '5%');
+              newPulse.setAttribute('fill', 'transparent');
+              newPulse.style.setProperty('animation-delay', String(index * 2) + 's');
+              newPulse.style.setProperty('animation-iteration-count', '1');
+              parent?.appendChild(newPulse);
+              newPulse.classList.add('pulseSuccess');
+            }
+          });
+            
+        }
+        setTimeout(() => {
+          let stackTxt = document.getElementById('stack')
+          if (stackTxt) {
+            stackTxt.innerHTML = current.cStack;
+          }
+        }, index * 2000);
+      }
+
+      setTimeout(() => {
+        path.forEach((x, i) => {
+          console.log(path);
+          let animBall = document.getElementById('animBall' + i);
+          let animPulse = document.getElementById('animPulse' + i);
+          let animPulseSuccess = document.getElementById('animSuccessPulse' + i);
+  
+          animBall?.remove();
+          animPulse?.remove();
+          animPulseSuccess?.remove();
+        });
+        let animPulseSuccess = document.getElementById('animSuccessPulse' + runPath.length + 1);
+        animPulseSuccess?.remove();
+      }, path.length * 2000);
+
+      /* let root:TraversalType = newRunTree.filter(node => currentTraverseId === node.id)[0];
+      let leaves:TraversalType[] = [];
+      let transitionOptions:TransitionType[] = [];
+      let tempTraversalIds:number = traversalId;
+      let tempStack:string;
+      let transitionId:number;
+      let animConnection:ConnectionType;
+      let state:StateType;
+      let tweens:gsap.core.Tween[] = [];
+
+        transitionOptions = transitions.filter(transition =>transition.cStateId === root.cStateId);
+        transitionOptions = transitionOptions.filter(transition =>transition.cInput === input[root.cIHead]);
+        transitionOptions = transitionOptions.filter(transition =>transition.cStack === root.cStack[root.cSHead]);
+        if (transitionOptions.length === 0) {
+          state = states.filter(s => s.id == root.cStateId)[0];
+          console.log(state.accept);
+          gsap.killTweensOf("*");
+          clientReset();
+          setRunEnd(true);
+        } else {
+          connections.forEach(c => {
+            let animBall = document.getElementById('animBall' + c.id);
+            let animPulse = document.getElementById('animPulse' + c.id);
+            if (animBall) {
+              animBall.remove();
+            }
+            if (animPulse) {
+              animPulse.remove();
+            }
+          })
+          console.log(transitionOptions);
+          transitionOptions.forEach(transition => {
+            tempStack = stack;
+            tempStack = tempStack.slice(0, -1);
+            tempStack = tempStack + transition.nStack;
+            leaves.push({id:tempTraversalIds, parentId:root.id, cStateId:transition.nStateId, cStack:tempStack, cIHead:root.cIHead+1, cSHead:tempStack.length - 1})
+            tempTraversalIds += 1;
+
+            transitionId = transition.id;
+            animConnection = connections.filter(connection => connection.transitionIds.find(id => id == transitionId) !== undefined)[0];
+            state = states.filter(s => s.id == transition.nStateId)[0];
+            let pulse = document.getElementById("animPulse" + animConnection.id);
+            let ball = document.getElementById("animBall" + animConnection.id);
+            if (pulse) {
+              pulse.setAttribute("cx", String(state.x));
+              pulse.setAttribute("cy", String(state.y));
+              pulse.getAnimations().forEach(anim => {anim.cancel(); anim.play();});
+            } else {
+              //<circle id={'animPulse' + state.id} className='pulse' cx={String(state.x)} cy={String(state.y)} r="5%" stroke='white' strokeWidth='0.5%' fill='transparent'/>;
+              let newPulse = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+              let parent = document.getElementById('myCanvas');
+              newPulse.setAttribute('id', 'animPulse' + animConnection.id);
+              newPulse.setAttribute('cx', String(state.x));
+              newPulse.setAttribute('cy', String(state.y));
+              newPulse.setAttribute('r', '5%');
+              newPulse.setAttribute('stroke', 'white');
+              newPulse.setAttribute('strokeWidth', '5%');
+              newPulse.setAttribute('fill', 'transparent');
+              parent?.appendChild(newPulse);
+              newPulse.classList.add('pulse');
+            }
+
+            if (!ball) {
+              let newBall = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+              let parent = document.getElementById('myCanvas');
+              newBall.setAttribute('id', 'animBall' + animConnection.id);
+              newBall.setAttribute('className', 'pathBall');
+              newBall.setAttribute('r', '2%');
+              newBall.setAttribute('stroke', 'white');
+              newBall.setAttribute('fill', 'white');
+              parent?.insertBefore(newBall, parent?.children[0]);
+              //parent?.appendChild(newBall);
+            }
+            tweens[state.id] = gsap.to("#animBall" + animConnection.id, {
+              motionPath: {
+                  path: "#connection" + animConnection.id,
+                  align: "#connection" + animConnection.id,
+                  alignOrigin: [0.5, 0.5]
+              },
+              ease: "none",
+              duration: 1.5,
+              repeat: -1,
+            });
+            tweens[state.id].play();
+          });
+    
+          leaves.forEach(leaf => {
+            newRunTree.push(leaf);
+          });
+      };
+        setSHead(leaves[0].cSHead);
+        setStack(leaves[0].cStack);
+        setCurrentTraverseId(leaves[0].id);
+        setTraversalId(tempTraversalIds);
+        setRunTree(newRunTree); */
+    }
+
+    /* const clientRun = (): void => {
       let newRunTree:TraversalType[] = [...runTree];
       let root:TraversalType = newRunTree.filter(node => node.id === currentTraverseId)[0];
       let leaves:TraversalType[] = [];
       let transitionOptions:TransitionType[] = [];
-      let tempTraversalId:number = traversalId;
+      let tempTraversalId:number = 1;
       let tempStack:string;
       let transitionId:number;
       let animConnection:ConnectionType;
+      let state:StateType;
+      let runEnd:boolean = false;
       
-      transitionOptions = transitions.filter(transition =>transition.cStateId === root.cStateId);
-      transitionOptions = transitionOptions.filter(transition =>transition.cInput === input[root.cIHead]);
-      transitionOptions = transitionOptions.filter(transition =>transition.cStack === root.cStack[root.cSHead]);
-      
-      transitionOptions.forEach(transition => {
-        tempStack = stack;
-        tempStack = tempStack.slice(0, -1);
-        tempStack = tempStack + transition.nStack;
-        leaves.push({id:tempTraversalId, parentId:root.id, cStateId:transition.nStateId, cStack:tempStack, cIHead:root.cIHead+1, cSHead:tempStack.length - 1})
-        tempTraversalId += 1;
-      });
-      transitionId = transitionOptions[0].id;
-      console.log(transitionId);
-      console.log(connections);
-      animConnection = connections.filter(connection => connection.transitionIds.find(id => id == transitionId) !== undefined)[0];
-      console.log(animConnection);
-      let tween = gsap.to("#animBall", {
-        motionPath: {
-            path: "#connection" + animConnection.id,
-            align: "#connection" + animConnection.id,
-            alignOrigin: [0.5, 0.5]
-        },
-        ease: "none",
-        duration: 1,
-        repeat: -1,
-      });
-      tween.play();
-
-      leaves.forEach(leaf => {
-        newRunTree.push(leaf);
-      });
-
-      console.log(root);
-      console.log(leaves);
       console.log(newRunTree);
-      setSHead(leaves[0].cSHead);
-      setStack(leaves[0].cStack);
-      setCurrentTraverseId(leaves[0].id);
-      setTraversalId(tempTraversalId);
-      setRunTree(newRunTree);
-    }
+      for (let index = 0; index <= input.length; index++) {
+          transitionOptions = transitions.filter(transition =>transition.cStateId === root.cStateId);
+          transitionOptions = transitionOptions.filter(transition =>transition.cInput === input[root.cIHead]);
+          transitionOptions = transitionOptions.filter(transition =>transition.cStack === root.cStack[root.cSHead]);
+          
+          if (transitionOptions.length === 0) {
+            state = states.filter(s => s.id == root.cStateId)[0];
+            console.log(state.accept);
+            gsap.killTweensOf("*");
+            runEnd = true;
+          } else {
+            transitionOptions.forEach(transition => {
+              tempStack = stack;
+              tempStack = tempStack.slice(0, -1);
+              tempStack = tempStack + transition.nStack;
+              leaves.push({id:tempTraversalId, parentId:root.id, cStateId:transition.nStateId, cStack:tempStack, cIHead:root.cIHead+1, cSHead:tempStack.length - 1})
+              tempTraversalId += 1;
+            });
+
+            transitionId = transitionOptions[0].id;
+            animConnection = connections.filter(connection => connection.transitionIds.find(id => id == transitionId) !== undefined)[0];
+            state = states.filter(s => s.id == transitionOptions[0].nStateId)[0];
+            document.getElementById("animPulse")?.setAttribute("cx", String(state.x));
+            document.getElementById("animPulse")?.setAttribute("cy", String(state.y));
+            document.getElementById("animPulse")?.getAnimations().forEach(anim => {anim.cancel(); anim.play();});
+            let tween = gsap.to("#animBall", {
+              motionPath: {
+                  path: "#connection" + animConnection.id,
+                  align: "#connection" + animConnection.id,
+                  alignOrigin: [0.5, 0.5]
+              },
+              ease: "none",
+              duration: 1.5,
+              repeat: -1,
+            });
+            tween.play();
+      
+            leaves.forEach(leaf => {
+              newRunTree.push(leaf);
+            });
+            root = leaves[0];
+          }
+        setTimeout(() => {}, 1500 * index);
+        if (runEnd) {
+          break;
+        }
+      }
+
+      clientReset();
+    } */
+
     const [selected, setSelected] = useState<number>(-1);
     const [offset, setOffset] = useState({x:0, y:0});
     
@@ -326,6 +898,7 @@ const App:any = () => {
       
       setTransitions(newTransitions);
       setConnections(newConnections);
+      setRunTreeSet(false);
     }
 
     const clientUpdateTransitionCState = (transitionParam:TransitionType, value:string):void => {
@@ -354,6 +927,7 @@ const App:any = () => {
       setTransitions(newTransitions);
       setConnections(newConnections);
       setconnectionId(newConnectionId);
+      setRunTreeSet(false);
     }
 
     const clientUpdateTransitionNState = (transitionParam:TransitionType, value:string):void => {
@@ -382,6 +956,7 @@ const App:any = () => {
       setTransitions(newTransitions);
       setConnections(newConnections);
       setconnectionId(newConnectionId);
+      setRunTreeSet(false);
     }
 
     const clientUpdateTransitionCInput = (transitionParam:TransitionType, value:string):void => {
@@ -391,6 +966,7 @@ const App:any = () => {
       newTransitions[index].cInput = value;
       
       setTransitions(newTransitions);
+      setRunTreeSet(false);
     }
 
     const clientUpdateTransitionCStack = (transitionParam:TransitionType, value:string):void => {
@@ -400,6 +976,7 @@ const App:any = () => {
       newTransitions[index].cStack = value;
       
       setTransitions(newTransitions);
+      setRunTreeSet(false);
     }
 
     const clientUpdateTransitionNStack = (transitionParam:TransitionType, value:string):void => {
@@ -409,6 +986,7 @@ const App:any = () => {
       newTransitions[index].nStack = value;
       
       setTransitions(newTransitions);
+      setRunTreeSet(false);
     }
 
     const clientAddTransition = ():void => {
@@ -439,6 +1017,7 @@ const App:any = () => {
       setTransitionId(newTransitionId);
       setConnections(newConnections);
       setconnectionId(newConnectionId);
+      setRunTreeSet(false);
     }
 
     const clientSetStartState = (value:string):void => {
@@ -449,6 +1028,7 @@ const App:any = () => {
       
       setStart(Number(value));
       setStates(newStates);
+      setRunTreeSet(false);
     }
 
     const clientSetAcceptState = (value:string, index:number):void => {
@@ -461,6 +1041,7 @@ const App:any = () => {
 
       setAccept(newAccepts);
       setStates(newStates);
+      setRunTreeSet(false);
     }
 
     const clientRemoveAcceptSelector = (value:number):void => {
@@ -472,6 +1053,7 @@ const App:any = () => {
 
       setAccept(newAccepts);
       setStates(newStates);
+      setRunTreeSet(false);
     }
 
     const clientRemoveState = (stateId:number): void => {
@@ -495,6 +1077,7 @@ const App:any = () => {
       setStates(newStates);
       setTransitions(newTransitions);
       setConnections(newConnections);
+      setRunTreeSet(false);
     }
 
     const clientAddAcceptSelector = ():void => {
@@ -509,6 +1092,7 @@ const App:any = () => {
 
       setAccept(newAccepts);
       setStates(newStates);
+      setRunTreeSet(false);
     }
 
     useEffect(() => {
@@ -569,7 +1153,8 @@ const App:any = () => {
               </div>
             </div>
             <input type='submit' className='simReset' value='Reset' onClick={() => clientReset()}/>
-            <input type='submit' className='simStep' value='step' onClick={() => clientStep()}/>
+            <input type='submit' className='simStep' value='Step' onClick={() => clientStep()}/>
+            <input type='submit' className='simRun' value='Run' onClick={() => clientRun()}/>
           </div>
           <div className='simWrapperRight'>
             {stateRenameVisible && 
@@ -591,6 +1176,16 @@ const App:any = () => {
               >
                 <path d='M0,0 V6 L5,3 Z' fill="white" />
               </marker>
+              <marker 
+                id='start' 
+                orient="auto" 
+                markerWidth='200' 
+                markerHeight='200' 
+                refX='19' 
+                refY='5'
+              >
+                <path d='M1,1 V10 L8,5 Z' stroke='white' strokeWidth='0.15%' fill='transparent'/>
+              </marker>
               <filter x="0" y="0" width="1" height="1" id="solid">
                 <feFlood floodColor="rgb(44, 44, 44)" result="bg" />
                 <feMerge>
@@ -599,7 +1194,6 @@ const App:any = () => {
                 </feMerge>
               </filter>
             </defs>
-            <circle id='animBall' r="2%" stroke='white' fill='white'/>
             <svg>
             {connections.map((x, i) => {
               let cState = states.filter(state => state.id === x.cStateId)[0];
@@ -644,7 +1238,7 @@ const App:any = () => {
                 }
                 return (
                   <svg key={i}>
-                    <path id={txtId} markerEnd='url(#head)' d={"M " + cState.x + " " + cState.y + " L " + nState.x + " " + nState.y} stroke="white" strokeWidth="0.5%" fill="none" />
+                    <path id={txtId} markerEnd='url(#head)' d={"M " + cState.x + " " + cState.y + " L " + nState.x + " " + nState.y} stroke="white" strokeWidth="0.5%" fill="none"/>
                     <text filter="url(#solid)" x={cState.x + ((nState.x - cState.x) / 2)} y={cState.y + ((nState.y - cState.y) / 2)} fill='white' fontSize='20' textAnchor='middle'>
                     {x.transitionIds.map((y, i) => {
                         let transition = transitions.find(t => t.id == y);
@@ -661,20 +1255,23 @@ const App:any = () => {
               }
             })}
             </svg>
-            {states.map((x, i) => {return (
+            {states.map((x, i) => {
+              return (
               <svg>
-                <circle className='draggable svg' cx={x.x} cy={x.y} r="5%" stroke="white" strokeWidth="0.5%" fill="rgb(44, 44, 44)" onMouseDown={(e) => startDrag(e, x.id)} onContextMenu={e => stateContextMenu(e, x)}/>
+                {x.accept && <circle id={'accept' + x.id} className='draggable svg' cx={x.x} cy={x.y} r="6%" stroke="white" strokeWidth="0.5%" fill="transparent"/>}
+                {x.start && <path id={'start' + x.id} markerEnd='url(#start)' d={"M " + x.x + " " + x.y + " L " + x.x + " " + x.y} stroke="white" strokeWidth="0.5%" fill="none"/>}
+                <circle id={'state' + x.id} className='draggable svg' cx={x.x} cy={x.y} r="5%" stroke="white" strokeWidth="0.5%" fill="rgb(44, 44, 44)" onMouseDown={(e) => startDrag(e, x.id)} onContextMenu={e => stateContextMenu(e, x)}/>
                 <text className='svg' x={x.x} y={x.y + 8} fill='white' fontSize='25' textAnchor='middle' onMouseDown={(e) => startDrag(e, x.id)} onContextMenu={e => stateContextMenu(e, x)}>{x.name}</text>
               </svg>
             )})}
           </svg>
             <div className='stackWrapper'>
               <div className='stackLabel'>Stack</div>
-              <div className='stackState'>{stack}</div>
+              <div id='stack' className='stackState'>Z</div>
             </div>
             <div className='inputWrapper'>
               <div className='inputLabel'>Input</div>
-              <input type='text' className='inputInput' value={input} onChange={e => setInput(e.currentTarget.value)}/>
+              <input type='text' className='inputInput' value={input} onChange={e => {setInput(e.currentTarget.value); setRunTreeSet(false);}}/>
             </div>
           </div>
         </div>

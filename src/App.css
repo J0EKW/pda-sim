@@ -189,7 +189,7 @@
   box-sizing: border-box;
   transition-duration: 0.2s;
   background-color: transparent;
-  width: 50%;
+  width: 33.3%;
   height: 10%;
   font-size: inherit;
 }
@@ -202,12 +202,25 @@
   box-sizing: border-box;
   transition-duration: 0.2s;
   background-color: transparent;
-  width: 50%;
+  width: 33.3%;
   height: 10%;
   font-size: inherit;
 }
 
-.simStep:hover, .simReset:hover {
+.simRun {
+  border-style: solid;
+  border-width: 1px;
+  border-color: white;
+  color: white;
+  box-sizing: border-box;
+  transition-duration: 0.2s;
+  background-color: transparent;
+  width: 33.3%;
+  height: 10%;
+  font-size: inherit;
+}
+
+.simStep:hover, .simReset:hover, .simRun:hover {
   background-color: rgb(0, 100, 100);
 }
 
@@ -279,6 +292,46 @@
   width: 25px;
   height: 25px;
   transition-duration: 0.2s;
+}
+
+.pulse {
+  animation-name: pulse-animation;
+  animation-duration: 1.5s;
+}
+
+.pulseSuccess {
+  animation-name: pulse-animation-success;
+  animation-duration: 1.5s;
+}
+
+@keyframes pulse-animation {
+  0% {
+    stroke: rgba(255, 255, 255, 1);
+    stroke-width: 0.5%;
+    r: 5%;
+  }
+  33% {
+    stroke: rgba(255, 255, 255, 0);
+    stroke-width: 0.5%;
+    r: 8%;
+  }
+  100% {
+    stroke: rgba(255, 255, 255, 0);
+    r: 8%;
+  }
+}
+
+@keyframes pulse-animation-success {
+  0% {
+    stroke: rgba(0, 160, 0, 1);
+    stroke-width: 0.5%;
+    r: 5%;
+  }
+  100% {
+    stroke: rgba(0, 160, 0, 0);
+    stroke-width: 0.5%;
+    r: 10%;
+  }
 }
 
 .inputInput::placeholder {
