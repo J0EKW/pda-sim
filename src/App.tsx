@@ -1,14 +1,9 @@
-import { waitFor } from '@testing-library/react';
-import { connect } from 'http2';
 import React, { useState, useEffect } from 'react';
 import { ContextMenu } from './contextMenu';
 import './App.css';
-import { truncateSync } from 'fs';
 import { StateType, TransitionType, ConnectionType, TraversalType, ContextMenuPosType, OptionType, ExampleType } from './types';
-import { setTokenSourceMapRange, transform } from 'typescript';
 import gsap from 'gsap';
 import { MotionPathPlugin } from "gsap/MotionPathPlugin";
-import { Z_ASCII } from 'zlib';
 import { automataExamples } from './examples';
 
 gsap.registerPlugin(MotionPathPlugin);
@@ -333,13 +328,13 @@ const App:any = () => {
           pulse.remove();
         }
         let pathStates = states.filter(s => path.find(p => p.cStateId === s.id) !== undefined);
-        pathStates.forEach(s => {
-          if (s !== undefined) {
+        pathStates.forEach((x, i) => {
+          if (x !== undefined) {
             let newPulse = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
             let parent = document.getElementById('myCanvas');
-            newPulse.setAttribute('id', 'animSuccessPulse' + s.id);
-            newPulse.setAttribute('cx', String(s.x));
-            newPulse.setAttribute('cy', String(s.y));
+            newPulse.setAttribute('id', 'animSuccessPulse' + i);
+            newPulse.setAttribute('cx', String(x.x));
+            newPulse.setAttribute('cy', String(x.y));
             newPulse.setAttribute('r', '5%');
             newPulse.setAttribute('stroke', 'white');
             newPulse.setAttribute('strokeWidth', '5%');
@@ -349,6 +344,13 @@ const App:any = () => {
             newPulse.classList.add('pulseSuccess');
           }
         }); 
+      } else {
+        if (ball) {
+          ball.remove();
+        }
+        if (pulse) {
+          pulse.remove();
+        }
       }
       let stackTxt = document.getElementById('stack')
       if (stackTxt) {stackTxt.innerHTML = current.cStack}
@@ -484,13 +486,13 @@ const App:any = () => {
             pulse.remove();
           }
           let pathStates = states.filter(s => path.find(p => p.cStateId === s.id) !== undefined);
-          pathStates.forEach(s => {
-            if (s !== undefined) {
+          pathStates.forEach((x, i) => {
+            if (x !== undefined) {
               let newPulse = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
               let parent = document.getElementById('myCanvas');
-              newPulse.setAttribute('id', 'animSuccessPulse' + s.id);
-              newPulse.setAttribute('cx', String(s.x));
-              newPulse.setAttribute('cy', String(s.y));
+              newPulse.setAttribute('id', 'animSuccessPulse' + i);
+              newPulse.setAttribute('cx', String(x.x));
+              newPulse.setAttribute('cy', String(x.y));
               newPulse.setAttribute('r', '5%');
               newPulse.setAttribute('stroke', 'white');
               newPulse.setAttribute('strokeWidth', '5%');
@@ -502,6 +504,13 @@ const App:any = () => {
             }
           });
             
+        } else {
+          if (ball) {
+            ball.remove();
+          }
+          if (pulse) {
+            pulse.remove();
+          }
         }
         setTimeout(() => {
           let stackTxt = document.getElementById('stack')
