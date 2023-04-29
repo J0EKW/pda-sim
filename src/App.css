@@ -125,10 +125,11 @@
   flex-direction: row;
   text-align: center;
   border-style: solid;
-  border-width: 1px;
+  border-width: 1px 0px 0px 0px;
   border-color: white;
   color: white;
   box-sizing: border-box;
+  margin: 1% 0% 0% 0%;
 }
 
 .add, .remove {
@@ -143,6 +144,7 @@
   height: 20px;
   text-align: center;
   padding: 0%;
+  margin: 1%;
 }
 
 .txtStartSelect {
@@ -163,6 +165,7 @@
   color: white;
   box-sizing: border-box;
   height: 20%;
+  overflow: auto;
 }
 
 .txtAcceptSelect {
@@ -292,6 +295,7 @@
   width: 25px;
   height: 25px;
   transition-duration: 0.2s;
+  margin: 1%;
 }
 
 .pulse {
@@ -332,6 +336,33 @@
     stroke-width: 0.5%;
     r: 10%;
   }
+}
+
+#exampleWrapper {
+  align-self: center;
+  justify-content: center;
+  display: flex;
+  flex-direction: row;
+  margin: 10px;
+  width: 20%;
+}
+
+.exampleSelect {
+  border-style: solid;
+  border-width: 1px;
+  border-color: white;
+  color: white;
+  box-sizing: border-box;
+  background-color: transparent;
+  transition-duration: 0.2s;
+  margin-left: 2%;
+}
+
+#exampleDef {
+  align-self: center;
+  margin: 10px;
+  width: 1000px;
+  max-width: 90vw;
 }
 
 .inputInput::placeholder {

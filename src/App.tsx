@@ -4,18 +4,19 @@ import React, { useState, useEffect } from 'react';
 import { ContextMenu } from './contextMenu';
 import './App.css';
 import { truncateSync } from 'fs';
-import { StateType, TransitionType, ConnectionType, TraversalType, ContextMenuPosType, OptionType } from './types';
+import { StateType, TransitionType, ConnectionType, TraversalType, ContextMenuPosType, OptionType, ExampleType } from './types';
 import { setTokenSourceMapRange, transform } from 'typescript';
 import gsap from 'gsap';
 import { MotionPathPlugin } from "gsap/MotionPathPlugin";
 import { Z_ASCII } from 'zlib';
+import { automataExamples } from './examples';
 
 gsap.registerPlugin(MotionPathPlugin);
 const App:any = () => {
 
     const [stateId, setStateId] = useState(0);
     const [transitionId, setTransitionId] = useState(0);
-    const [connectionId, setconnectionId] = useState(0);
+    const [connectionId, setConnectionId] = useState(0);
     const [traversalId, setTraversalId] = useState<number>(0);
     const [states, setStates] = useState<StateType[]>([]);
     const [transitions, setTransitions] = useState<TransitionType[]>([]);
@@ -36,9 +37,9 @@ const App:any = () => {
     const [stateRenameVal, setStateRenameVal] = useState<string>('');
     const [currentTraversalId, setCurrentTraversalId] = useState<number>(0);
     const [acceptTraversalId, setacceptTraversalId] = useState<number>(-1);
-    const [runEnd, setRunEnd] = useState<boolean>(false);
     const [removeAnimElem, setRemoveAnimElem] = useState<boolean>(false);
     const [runTreeSet, setRunTreeSet] = useState<boolean>(false);
+    const [examples, setExamples] = useState<ExampleType[]>(automataExamples);
 
     const addState = (nameParam: string = '', statesParam:StateType[]):[newState:StateType, newStateId:number, states:StateType[]] => {
       if (states.filter(state => state.name == nameParam).length > 0) {
@@ -193,7 +194,6 @@ const App:any = () => {
       setRunTree([startTraversal]);
       setRunPath([startTraversal]);
       setTraversalId(0);
-      setRunEnd(false);
       setRemoveAnimElem(true);
       setRunTreeSet(false);
       setacceptTraversalId(-1);
@@ -224,7 +224,10 @@ const App:any = () => {
           transitionOptions = transitionOptions.filter(transition => transition.cStack === newRunTree[index].cStack[newRunTree[index].cSHead]);
           if (transitionOptions.length > 0) {
             transitionOptions.forEach(transition => {
-              let newStack = newRunTree[index].cStack.slice(0, -1) + transition.nStack;
+              let newStack:string = newRunTree[index].cStack.slice(0, -1);
+              for (let index = transition.nStack.length - 1; index > -1; index--) {
+                newStack += transition.nStack[index];
+              }
               newRunTree.push({
                 id:tempId,
                 parentId:newRunTree[index].id,
@@ -357,7 +360,6 @@ const App:any = () => {
       let path:TraversalType[] = runPath;
       let traversalId:number = currentTraversalId;
       let acceptId:number = acceptTraversalId;
-
       if (!runTreeSet) {
         newRunTree = [{id:0, parentId:-1, cStateId:start, cStack:'Z', cIHead:0, cSHead:0}];
         traversalId = 0;
@@ -369,7 +371,10 @@ const App:any = () => {
           transitionOptions = transitionOptions.filter(transition => transition.cStack === newRunTree[index].cStack[newRunTree[index].cSHead]);
           if (transitionOptions.length > 0) {
             transitionOptions.forEach(transition => {
-              let newStack = newRunTree[index].cStack.slice(0, -1) + transition.nStack;
+              let newStack = newRunTree[index].cStack.slice(0, -1);
+              for (let index = transition.nStack.length - 1; index > -1; index--) {
+                newStack += transition.nStack[index];
+              }
               newRunTree.push({
                 id:tempId,
                 parentId:newRunTree[index].id,
@@ -636,7 +641,7 @@ const App:any = () => {
       setStateId(newStateId);
       setTransitions(newTransitions);
       setConnections(newConnections);
-      setconnectionId(newConnectionId);
+      setConnectionId(newConnectionId);
       setRunTreeSet(false);
     }
 
@@ -665,7 +670,7 @@ const App:any = () => {
       setStateId(newStateId);
       setTransitions(newTransitions);
       setConnections(newConnections);
-      setconnectionId(newConnectionId);
+      setConnectionId(newConnectionId);
       setRunTreeSet(false);
     }
 
@@ -726,7 +731,7 @@ const App:any = () => {
       setTransitions(newTransitions);
       setTransitionId(newTransitionId);
       setConnections(newConnections);
-      setconnectionId(newConnectionId);
+      setConnectionId(newConnectionId);
       setRunTreeSet(false);
     }
 
@@ -805,6 +810,29 @@ const App:any = () => {
       setRunTreeSet(false);
     }
 
+    const clientGetExample = (exampleId:string):void => {
+      if (exampleId !== '0') {
+        let newExample = examples.find(e => e.id === Number(exampleId));
+
+        if (newExample) {
+          setStates(newExample.states);
+          setTransitions(newExample.transitions);
+          setConnections(newExample.connections);
+          setStateId(newExample.states.length);
+          setTransitionId(newExample.transitions.length);
+          setConnectionId(newExample.connections.length);
+          setAccept(newExample.acceptingStateIds);
+          if (newExample.startStateId !== null) {
+            setStart(newExample.startStateId);
+          }
+          let definition = document.getElementById('exampleDef');
+          if (definition) {
+            definition.innerText = newExample.definition;
+          }
+        }
+      }
+    }
+
     useEffect(() => {
       const handleClick = () => {
         setContextMenuVisible(false);
@@ -822,9 +850,16 @@ const App:any = () => {
           <h1>Pushdown Automata</h1>
           <p>Subtitle</p>
         </header>
+        <div id='exampleWrapper'>
+          <div>Example Automata:</div>
+          <select className='exampleSelect' onChange={(e) => clientGetExample(e.currentTarget.value)}>
+            {examples.map((x, i) => {return (<option value={x.id} key={i}>{x.name}</option>)})}
+          </select>
+        </div>
         <div className='simWrapper'>
           <div className='simWrapperLeft'>
             <div id='txtTransitionsWrapper' className='txtTransitionsWrapper'>
+              <div>Transitions</div>
               {transitions.map((x, i) => {
                 return (
                   <div id={'transition' + i} className='transition' key={i}>
@@ -985,13 +1020,10 @@ const App:any = () => {
             </div>
           </div>
         </div>
-        <div>
-          {input}
-        </div>
+        <div id='exampleDef'></div>
         {contextMenuVisible && <ContextMenu left={contextMenuPos.x} top={contextMenuPos.y} options={contextMenuOptions}/>}
       </div>
   );
 }
 
 export default App;
-//document.getElementById('txtTransitionWrapper').addEventListener('click', addTransition);
