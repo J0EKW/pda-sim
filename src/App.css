@@ -5,6 +5,20 @@
   flex-direction: column;
 }
 
+.textBlock {
+  margin: 0% 3%;
+}
+
+.link {
+  align-self: center;
+  margin: 1%;
+  color:rgb(98, 202, 98);
+}
+
+.link:visited {
+  color:rgb(98, 202, 98);
+}
+
 .renameStateWrapper {
   position: absolute;
   left: calc(63% - 130px);

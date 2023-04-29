@@ -855,9 +855,25 @@ const App:any = () => {
     return (
       <div className="app">
         <link rel="stylesheet" href="./App.css"></link>
-        <header>
-          <h1>Pushdown Automata</h1>
-          <p>Subtitle</p>
+        <header className='textBlock'>
+          <h1>Pushdown Automata Simulator</h1>
+          <p>Welcome to our web application for creating and running Pushdown Automata.
+             This was created for a project as part of a Bachelors degree, the goal of
+             which is to improve the user experience and educational value of using
+             Automata Simulators as an educational supplement to Automata Theory. Pushdown
+             Automata were chosen due to the relative underrepresentation in the field,
+             despite the research that has been done into them over the last 60 years.
+            </p>
+          <p>The project concluded with the prospect of being open to future work, meaning
+            that there is a potential for futre development for this application, for both
+            UX (colour option, sound, etc) and technical features (two-way automata,
+            acceptance by empty stack, other Pushdown Automata, etc). Should you notice
+            any bugs or have any opinions on how this could be further developed, Please
+            add it as an 'issue' to the repository linked below.
+          </p>
+          <p>Please use the examples as an introduction to Pushdown Automata, as well as to
+            gain a better understanding of how this simulator works. Further instructions are
+            below</p>
         </header>
         <div id='exampleWrapper'>
           <div>Example Automata:</div>
@@ -1031,6 +1047,49 @@ const App:any = () => {
         </div>
         <div id='exampleDef'></div>
         {contextMenuVisible && <ContextMenu left={contextMenuPos.x} top={contextMenuPos.y} options={contextMenuOptions}/>}
+        <div className='textBlock'>
+          <h1>Help</h1>
+          <p>STACK - A type of data structure (think list) where values are added to or
+            removed from the top, like a real life stack of items</p>
+          <p>POP - The act of taking the value from the top of the stack. This is what
+            happens in the transitions, where box 2 is the desired value to use that
+            transition
+          </p>
+          <p>PUSH - The act of adding a value to the top of a stack. This is what happens
+            in the transitions, where box 5 is the desired values to to push. It should be
+            noted that each character is pushed individually, so if you see 'AB' in box 5
+            that means A is being pushed first, then B, as opposed to adding both
+          </p>
+          <p>To use the Simulator, please start by adding transitions. This can be doneby
+            clicking the plus (+) button. Each transition has 5 boxes, indicating the following:
+            the current state, the current value of the input, the value 'popped' from the
+            stack, the next state, and the value(s) 'pushed' to the stack. This set of transitions
+            handles the movement within the automaton, you will be able to see the relationships
+            between the states in the GUI on the right.
+          </p>
+          <p>Once complete, please give a starting state and accepting states. There must be
+            atleast one accepting state for any input to be accepted, as this simulator is not
+            set up to accept on empty stack. 
+          </p>
+          <p>
+            Finally, give a text value in the 'input' box. This is the value that will be run
+            on your automata, where each value in the input will be measured. You can see how the
+            automaton handles the input by 'step'ing through the evaluation state by state, or by
+            clicking 'Run' to see it through to the end. The Automaton will either halt on not
+            accepting (either there is no transition available from the current state using that
+            input value or the end of the input has been reached without being in an accepting state)
+            or be accepted, in which case an animation will play.
+          </p>
+          <p>
+            Changing the state in the transition box will not change the state name, rather it will
+            change the state itself to a different one. To change a state's name but keep the relation
+            the same, you can right click in the GUI and rename from there. Furthermore you can delete
+            the state, however be warned that this will delete any transitions involving that state.
+            You can also remove transitions in this manner in the GUI, or by using the (-) button
+            corresponding to it. A state's acceptance can also be removed this way.
+          </p>
+        </div>
+        <a className='link' href="https://github.com/J0EKW/pda-sim">Repository</a>
       </div>
   );
 }
