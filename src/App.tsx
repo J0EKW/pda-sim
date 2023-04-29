@@ -1,21 +1,17 @@
-import { waitFor } from '@testing-library/react';
-import { connect } from 'http2';
 import React, { useState, useEffect } from 'react';
 import { ContextMenu } from './contextMenu';
 import './App.css';
-import { truncateSync } from 'fs';
-import { StateType, TransitionType, ConnectionType, TraversalType, ContextMenuPosType, OptionType } from './types';
-import { setTokenSourceMapRange, transform } from 'typescript';
+import { StateType, TransitionType, ConnectionType, TraversalType, ContextMenuPosType, OptionType, ExampleType } from './types';
 import gsap from 'gsap';
 import { MotionPathPlugin } from "gsap/MotionPathPlugin";
-import { Z_ASCII } from 'zlib';
+import { automataExamples } from './examples';
 
 gsap.registerPlugin(MotionPathPlugin);
 const App:any = () => {
 
     const [stateId, setStateId] = useState(0);
     const [transitionId, setTransitionId] = useState(0);
-    const [connectionId, setconnectionId] = useState(0);
+    const [connectionId, setConnectionId] = useState(0);
     const [traversalId, setTraversalId] = useState<number>(0);
     const [states, setStates] = useState<StateType[]>([]);
     const [transitions, setTransitions] = useState<TransitionType[]>([]);
@@ -36,9 +32,9 @@ const App:any = () => {
     const [stateRenameVal, setStateRenameVal] = useState<string>('');
     const [currentTraversalId, setCurrentTraversalId] = useState<number>(0);
     const [acceptTraversalId, setacceptTraversalId] = useState<number>(-1);
-    const [runEnd, setRunEnd] = useState<boolean>(false);
     const [removeAnimElem, setRemoveAnimElem] = useState<boolean>(false);
     const [runTreeSet, setRunTreeSet] = useState<boolean>(false);
+    const [examples, setExamples] = useState<ExampleType[]>(automataExamples);
 
     const addState = (nameParam: string = '', statesParam:StateType[]):[newState:StateType, newStateId:number, states:StateType[]] => {
       if (states.filter(state => state.name == nameParam).length > 0) {
@@ -193,7 +189,6 @@ const App:any = () => {
       setRunTree([startTraversal]);
       setRunPath([startTraversal]);
       setTraversalId(0);
-      setRunEnd(false);
       setRemoveAnimElem(true);
       setRunTreeSet(false);
       setacceptTraversalId(-1);
@@ -224,7 +219,10 @@ const App:any = () => {
           transitionOptions = transitionOptions.filter(transition => transition.cStack === newRunTree[index].cStack[newRunTree[index].cSHead]);
           if (transitionOptions.length > 0) {
             transitionOptions.forEach(transition => {
-              let newStack = newRunTree[index].cStack.slice(0, -1) + transition.nStack;
+              let newStack:string = newRunTree[index].cStack.slice(0, -1);
+              for (let index = transition.nStack.length - 1; index > -1; index--) {
+                newStack += transition.nStack[index];
+              }
               newRunTree.push({
                 id:tempId,
                 parentId:newRunTree[index].id,
@@ -330,13 +328,13 @@ const App:any = () => {
           pulse.remove();
         }
         let pathStates = states.filter(s => path.find(p => p.cStateId === s.id) !== undefined);
-        pathStates.forEach(s => {
-          if (s !== undefined) {
+        pathStates.forEach((x, i) => {
+          if (x !== undefined) {
             let newPulse = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
             let parent = document.getElementById('myCanvas');
-            newPulse.setAttribute('id', 'animSuccessPulse' + s.id);
-            newPulse.setAttribute('cx', String(s.x));
-            newPulse.setAttribute('cy', String(s.y));
+            newPulse.setAttribute('id', 'animSuccessPulse' + i);
+            newPulse.setAttribute('cx', String(x.x));
+            newPulse.setAttribute('cy', String(x.y));
             newPulse.setAttribute('r', '5%');
             newPulse.setAttribute('stroke', 'white');
             newPulse.setAttribute('strokeWidth', '5%');
@@ -346,6 +344,13 @@ const App:any = () => {
             newPulse.classList.add('pulseSuccess');
           }
         }); 
+      } else {
+        if (ball) {
+          ball.remove();
+        }
+        if (pulse) {
+          pulse.remove();
+        }
       }
       let stackTxt = document.getElementById('stack')
       if (stackTxt) {stackTxt.innerHTML = current.cStack}
@@ -357,7 +362,6 @@ const App:any = () => {
       let path:TraversalType[] = runPath;
       let traversalId:number = currentTraversalId;
       let acceptId:number = acceptTraversalId;
-
       if (!runTreeSet) {
         newRunTree = [{id:0, parentId:-1, cStateId:start, cStack:'Z', cIHead:0, cSHead:0}];
         traversalId = 0;
@@ -369,7 +373,10 @@ const App:any = () => {
           transitionOptions = transitionOptions.filter(transition => transition.cStack === newRunTree[index].cStack[newRunTree[index].cSHead]);
           if (transitionOptions.length > 0) {
             transitionOptions.forEach(transition => {
-              let newStack = newRunTree[index].cStack.slice(0, -1) + transition.nStack;
+              let newStack = newRunTree[index].cStack.slice(0, -1);
+              for (let index = transition.nStack.length - 1; index > -1; index--) {
+                newStack += transition.nStack[index];
+              }
               newRunTree.push({
                 id:tempId,
                 parentId:newRunTree[index].id,
@@ -479,13 +486,13 @@ const App:any = () => {
             pulse.remove();
           }
           let pathStates = states.filter(s => path.find(p => p.cStateId === s.id) !== undefined);
-          pathStates.forEach(s => {
-            if (s !== undefined) {
+          pathStates.forEach((x, i) => {
+            if (x !== undefined) {
               let newPulse = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
               let parent = document.getElementById('myCanvas');
-              newPulse.setAttribute('id', 'animSuccessPulse' + s.id);
-              newPulse.setAttribute('cx', String(s.x));
-              newPulse.setAttribute('cy', String(s.y));
+              newPulse.setAttribute('id', 'animSuccessPulse' + i);
+              newPulse.setAttribute('cx', String(x.x));
+              newPulse.setAttribute('cy', String(x.y));
               newPulse.setAttribute('r', '5%');
               newPulse.setAttribute('stroke', 'white');
               newPulse.setAttribute('strokeWidth', '5%');
@@ -497,6 +504,13 @@ const App:any = () => {
             }
           });
             
+        } else {
+          if (ball) {
+            ball.remove();
+          }
+          if (pulse) {
+            pulse.remove();
+          }
         }
         setTimeout(() => {
           let stackTxt = document.getElementById('stack')
@@ -636,7 +650,7 @@ const App:any = () => {
       setStateId(newStateId);
       setTransitions(newTransitions);
       setConnections(newConnections);
-      setconnectionId(newConnectionId);
+      setConnectionId(newConnectionId);
       setRunTreeSet(false);
     }
 
@@ -665,7 +679,7 @@ const App:any = () => {
       setStateId(newStateId);
       setTransitions(newTransitions);
       setConnections(newConnections);
-      setconnectionId(newConnectionId);
+      setConnectionId(newConnectionId);
       setRunTreeSet(false);
     }
 
@@ -726,7 +740,7 @@ const App:any = () => {
       setTransitions(newTransitions);
       setTransitionId(newTransitionId);
       setConnections(newConnections);
-      setconnectionId(newConnectionId);
+      setConnectionId(newConnectionId);
       setRunTreeSet(false);
     }
 
@@ -805,6 +819,29 @@ const App:any = () => {
       setRunTreeSet(false);
     }
 
+    const clientGetExample = (exampleId:string):void => {
+      if (exampleId !== '0') {
+        let newExample = examples.find(e => e.id === Number(exampleId));
+
+        if (newExample) {
+          setStates(newExample.states);
+          setTransitions(newExample.transitions);
+          setConnections(newExample.connections);
+          setStateId(newExample.states.length);
+          setTransitionId(newExample.transitions.length);
+          setConnectionId(newExample.connections.length);
+          setAccept(newExample.acceptingStateIds);
+          if (newExample.startStateId !== null) {
+            setStart(newExample.startStateId);
+          }
+          let definition = document.getElementById('exampleDef');
+          if (definition) {
+            definition.innerText = newExample.definition;
+          }
+        }
+      }
+    }
+
     useEffect(() => {
       const handleClick = () => {
         setContextMenuVisible(false);
@@ -818,13 +855,36 @@ const App:any = () => {
     return (
       <div className="app">
         <link rel="stylesheet" href="./App.css"></link>
-        <header>
-          <h1>Pushdown Automata</h1>
-          <p>Subtitle</p>
+        <header className='textBlock'>
+          <h1>Pushdown Automata Simulator</h1>
+          <p>Welcome to our web application for creating and running Pushdown Automata.
+             This was created for a project as part of a Bachelors degree, the goal of
+             which is to improve the user experience and educational value of using
+             Automata Simulators as an educational supplement to Automata Theory. Pushdown
+             Automata were chosen due to the relative underrepresentation in the field,
+             despite the research that has been done into them over the last 60 years.
+            </p>
+          <p>The project concluded with the prospect of being open to future work, meaning
+            that there is a potential for futre development for this application, for both
+            UX (colour option, sound, etc) and technical features (two-way automata,
+            acceptance by empty stack, other Pushdown Automata, etc). Should you notice
+            any bugs or have any opinions on how this could be further developed, Please
+            add it as an 'issue' to the repository linked below.
+          </p>
+          <p>Please use the examples as an introduction to Pushdown Automata, as well as to
+            gain a better understanding of how this simulator works. Further instructions are
+            below</p>
         </header>
+        <div id='exampleWrapper'>
+          <div>Example Automata:</div>
+          <select className='exampleSelect' onChange={(e) => clientGetExample(e.currentTarget.value)}>
+            {examples.map((x, i) => {return (<option value={x.id} key={i}>{x.name}</option>)})}
+          </select>
+        </div>
         <div className='simWrapper'>
           <div className='simWrapperLeft'>
             <div id='txtTransitionsWrapper' className='txtTransitionsWrapper'>
+              <div>Transitions</div>
               {transitions.map((x, i) => {
                 return (
                   <div id={'transition' + i} className='transition' key={i}>
@@ -985,13 +1045,53 @@ const App:any = () => {
             </div>
           </div>
         </div>
-        <div>
-          {input}
-        </div>
+        <div id='exampleDef'></div>
         {contextMenuVisible && <ContextMenu left={contextMenuPos.x} top={contextMenuPos.y} options={contextMenuOptions}/>}
+        <div className='textBlock'>
+          <h1>Help</h1>
+          <p>STACK - A type of data structure (think list) where values are added to or
+            removed from the top, like a real life stack of items</p>
+          <p>POP - The act of taking the value from the top of the stack. This is what
+            happens in the transitions, where box 2 is the desired value to use that
+            transition
+          </p>
+          <p>PUSH - The act of adding a value to the top of a stack. This is what happens
+            in the transitions, where box 5 is the desired values to to push. It should be
+            noted that each character is pushed individually, so if you see 'AB' in box 5
+            that means A is being pushed first, then B, as opposed to adding both
+          </p>
+          <p>To use the Simulator, please start by adding transitions. This can be doneby
+            clicking the plus (+) button. Each transition has 5 boxes, indicating the following:
+            the current state, the current value of the input, the value 'popped' from the
+            stack, the next state, and the value(s) 'pushed' to the stack. This set of transitions
+            handles the movement within the automaton, you will be able to see the relationships
+            between the states in the GUI on the right.
+          </p>
+          <p>Once complete, please give a starting state and accepting states. There must be
+            atleast one accepting state for any input to be accepted, as this simulator is not
+            set up to accept on empty stack. 
+          </p>
+          <p>
+            Finally, give a text value in the 'input' box. This is the value that will be run
+            on your automata, where each value in the input will be measured. You can see how the
+            automaton handles the input by 'step'ing through the evaluation state by state, or by
+            clicking 'Run' to see it through to the end. The Automaton will either halt on not
+            accepting (either there is no transition available from the current state using that
+            input value or the end of the input has been reached without being in an accepting state)
+            or be accepted, in which case an animation will play.
+          </p>
+          <p>
+            Changing the state in the transition box will not change the state name, rather it will
+            change the state itself to a different one. To change a state's name but keep the relation
+            the same, you can right click in the GUI and rename from there. Furthermore you can delete
+            the state, however be warned that this will delete any transitions involving that state.
+            You can also remove transitions in this manner in the GUI, or by using the (-) button
+            corresponding to it. A state's acceptance can also be removed this way.
+          </p>
+        </div>
+        <a className='link' href="https://github.com/J0EKW/pda-sim">Repository</a>
       </div>
   );
 }
 
 export default App;
-//document.getElementById('txtTransitionWrapper').addEventListener('click', addTransition);

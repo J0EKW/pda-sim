@@ -27,7 +27,7 @@ export type TraversalType = {
   }
 
 export type ConnectionType = {
-    id: number,
+    readonly id: number,
     cStateId: number,
     nStateId: number,
     transitionIds: number[];
@@ -42,3 +42,14 @@ export type OptionType = {
     label: string,
     func: any
   }
+
+export type ExampleType = {
+  readonly id: number,
+  name: string,
+  states: StateType[],
+  transitions: TransitionType[],
+  connections: ConnectionType[],
+  acceptingStateIds: number[],
+  startStateId: number|null,
+  definition: string
+}
