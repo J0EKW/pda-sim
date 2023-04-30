@@ -865,7 +865,7 @@ const App:any = () => {
              despite the research that has been done into them over the last 60 years.
             </p>
           <p>The project concluded with the prospect of being open to future work, meaning
-            that there is a potential for futre development for this application, for both
+            that there is a potential for future development for this application, for both
             UX (colour option, sound, etc) and technical features (two-way automata,
             acceptance by empty stack, other Pushdown Automata, etc). Should you notice
             any bugs or have any opinions on how this could be further developed, Please
