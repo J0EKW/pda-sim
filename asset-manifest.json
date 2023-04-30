@@ -1,15 +1,15 @@
 {
   "files": {
     "main.css": "/pda-sim/static/css/main.b7d4407a.css",
-    "main.js": "/pda-sim/static/js/main.3087a0c9.js",
+    "main.js": "/pda-sim/static/js/main.20aa0927.js",
     "static/js/787.49490451.chunk.js": "/pda-sim/static/js/787.49490451.chunk.js",
     "index.html": "/pda-sim/index.html",
     "main.b7d4407a.css.map": "/pda-sim/static/css/main.b7d4407a.css.map",
-    "main.3087a0c9.js.map": "/pda-sim/static/js/main.3087a0c9.js.map",
+    "main.20aa0927.js.map": "/pda-sim/static/js/main.20aa0927.js.map",
     "787.49490451.chunk.js.map": "/pda-sim/static/js/787.49490451.chunk.js.map"
   },
   "entrypoints": [
     "static/css/main.b7d4407a.css",
-    "static/js/main.3087a0c9.js"
+    "static/js/main.20aa0927.js"
   ]
 }
